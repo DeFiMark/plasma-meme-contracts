@@ -10,6 +10,7 @@ pragma solidity 0.8.28;
 
 import "./interfaces/IBondingCurve.sol";
 import "./interfaces/ILunarPumpToken.sol";
+import "./interfaces/ILiquidityAdder.sol";
 import "./UD60x18/UD60x18.sol";
 
 contract BondingCurveData {
@@ -21,15 +22,16 @@ contract BondingCurveData {
     uint256 public constant BONDING_TARGET = 800_000_000 * 10**18;
     uint256 public constant TOKEN_TOTAL = 1_000_000_000 * 10**18;
 
-    // aScaled = 0.00001 * 1e18 = 1e13
-    uint256 public constant A_SCALED = 10_000_000_000_000; // 1e13
+    // aScaled = 0.000000001 * 1e18
+    uint256 public constant A_SCALED = 0.000000001 ether;
 
-    // bScaled = 0.000000001794 * 1e18 ~ 1.794e9
-    uint256 public constant B_SCALED = 1_794_000_000; // approx 1.794e9
+    // bScaled = 0.0000000034 * 1e18
+    uint256 public constant B_SCALED = 0.0000000034 ether;
 
     uint256 public bondingSupply;
 }
 
+// NOTE: ADD FAIL SAFE IN CASE OF UNFORSEEN EVENT -- WORST CASE IS FUNDS ARE LOCKED!!!
 contract BondingCurve is BondingCurveData, IBondingCurve {
 
     using UD60x18 for uint256;
@@ -51,28 +53,74 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     // --------------------------------------------------------------------------------
 
     /**
-     * @notice Buy tokens from the bonding curve by sending ETH.
-     * @dev The function inverts the integral to find how many tokens (deltaS) you get for msg.value.
-     */
+    * @notice Buy tokens from the bonding curve by sending ETH.
+    *         If the ETH provided would purchase more tokens than remain,
+    *         then only the remaining tokens are bought and any extra ETH is refunded.
+    * @dev Uses the forward integral to calculate cost.
+    */
     function buyTokens() external payable returns (uint256 tokensBought) {
         require(msg.value > 0, "No ETH sent");
+        require(bondingSupply < BONDING_TARGET, "Bonding curve is full");
+        require(!bonded, "Bonding curve is bonded");
 
-        // Convert incoming ETH (wei) into 1e18 scale
+        // Convert incoming ETH (in wei) into our internal 1e18 scale.
         uint256 ethInScaled = msg.value * 1e18 / 1 ether;
 
-        // Solve for deltaS in 1e18 scale, from the integral equation
-        tokensBought = solveIntegralBuy(bondingSupply, ethInScaled);
+        // Determine the desired ΔS (in 1e18 scale) from the ETH sent.
+        tokensBought = solveIntegralBuy(bondingSupply, msg.value);
 
-        // Cap at remaining supply
-        require(bondingSupply + tokensBought <= BONDING_TARGET, "Curve sold out");
+        // Determine the remaining tokens available.
+        uint256 remainingTokens = BONDING_TARGET - bondingSupply;
 
-        // Update state
-        unchecked {
-            bondingSupply += tokensBought;
+        // If the desired purchase exceeds the remaining supply,
+        // clamp tokensBought to the remaining amount.
+        if (tokensBought > remainingTokens) {
+
+            // Update the tokens bought to the remaining amount.
+            tokensBought = remainingTokens;
+
+            // Compute the actual cost (in 1e18 scale) for tokensBought using the forward integral:
+            // costForward = (a/b) * (e^(b*(S + ΔS)) - e^(b*S))
+            uint256 actualCostScaled = costForward(bondingSupply, tokensBought);
+
+            // Ensure that the user sent at least the actual cost.
+            require(msg.value >= actualCostScaled, "Not enough ETH sent");
+
+            // Update state: add the tokens bought.
+            unchecked {
+                bondingSupply += tokensBought;
+            }
+
+            // Mint tokens to the buyer.
+            _mint(msg.sender, tokensBought);
+
+            // Refund any ETH not used in the purchase.
+            uint256 refund = msg.value - actualCostScaled;
+
+            // bond the contract, sending necessary funds to fee receiver and dex
+            _bond(address(this).balance - refund);
+            
+            // Refund any excess ETH
+            if (refund > 0) {
+                (bool success, ) = msg.sender.call{value: refund}("");
+                require(success, "Refund failed");
+            }
+
+        } else {
+
+            // Update state: add the tokens bought.
+            unchecked {
+                bondingSupply += tokensBought;
+            }
+
+            // Mint tokens to the buyer.
+            _mint(msg.sender, tokensBought);
+
+            // see if bonded
+            if (bondingSupply >= BONDING_TARGET) {
+                _bond(address(this).balance);
+            }
         }
-
-        // Mint the tokens to buyer
-        _mint(msg.sender, tokensBought);
 
         return tokensBought;
     }
@@ -147,6 +195,41 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     //
     // a,b in 1e18 scale. S also in 1e18 scale. We do the exponent in UD60x18.
     // --------------------------------------------------------------------------------
+
+
+    /**
+    * @dev Compute the forward integral (cost) to purchase an additional _deltaS tokens,
+    * starting from a current supply _S.
+    *
+    * Formula: costForward = (a / b) * (e^(b * (S + deltaS)) - e^(b * S))
+    * where a = A_SCALED and b = B_SCALED (both scaled by 1e18).
+    *
+    * All parameters are in 1e18 fixed-point.
+    */
+    function costForward(uint256 _S, uint256 _deltaS)
+        public
+        pure
+        returns (uint256 cost)
+    {
+        // Compute b * (S + deltaS) in 1e18 scale.
+        uint256 bTimesSplusDelta = B_SCALED.mul(_S + _deltaS).div(1e18);
+        // Compute b * S in 1e18 scale.
+        uint256 bTimesS = B_SCALED.mul(_S).div(1e18);
+
+        // Compute exponentials: exp(b*(S + deltaS)) and exp(b*S).
+        uint256 expHigh = bTimesSplusDelta.exp(); // e^(b*(S+deltaS))
+        uint256 expLow = bTimesS.exp();           // e^(b*S)
+
+        // The difference: e^(b*(S+deltaS)) - e^(b*S)
+        uint256 diff = expHigh > expLow ? expHigh - expLow : 0;
+
+        // Calculate (a / b) in 1e18 scale.
+        // aOverB = A_SCALED * 1e18 / B_SCALED ensures the ratio is scaled properly.
+        uint256 aOverB = A_SCALED.mul(1e18).div(B_SCALED);
+
+        // Multiply the ratio by the difference and scale back down.
+        cost = aOverB.mul(diff).div(1e18);
+    }
 
     /**
      * @dev Solve for deltaS in the "buy" integral inversion:
@@ -247,6 +330,13 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
 
     function _burn(address from, uint256 amount) internal {
         ILunarPumpToken(token).bondingCurveTransferFrom(from, address(this), amount);
+    }
+
+    function _bond(uint256 ethAmount) internal {
+        bonded = true;
+        IERC20(token).transfer(liquidityAdder, TOKEN_TOTAL - BONDING_TARGET);
+        ILiquidityAdder(liquidityAdder).bond{value: ethAmount}(token);
+        // do liquidity adder stuff
     }
 
     function balanceOf(address user) public view returns (uint256) {

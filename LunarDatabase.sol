@@ -18,6 +18,7 @@ contract LunarDatabase is IDatabase, Ownable {
         address asset;
         address bondingCurve;
         string[] metadata; // social links, description, imageUrl
+        address dev;
     }
 
     // Mapping of project nonce to project
@@ -42,10 +43,13 @@ contract LunarDatabase is IDatabase, Ownable {
     address public feeRecipient;
 
     // Project nonce
-    uint256 public projectNonce;
+    uint256 public projectNonce = 1;
 
     // Liquidity adder contract
     address public liquidityAdder;
+
+    // Token Perma Locker
+    address public liquidityPermaLocker;
 
     /**
         Sets the address of the LunarPumpTokenMasterCopy
@@ -89,6 +93,13 @@ contract LunarDatabase is IDatabase, Ownable {
         liquidityAdder = _liquidityAdder;
     }
 
+    /**
+        Sets the token perma locker
+     */
+    function setLiquidityPermaLocker(address _liquidityPermaLocker) external onlyOwner {
+        liquidityPermaLocker = _liquidityPermaLocker;
+    }
+
     function launchProject(
         string[] calldata metadata,
         bytes calldata tokenPayload,
@@ -110,7 +121,8 @@ contract LunarDatabase is IDatabase, Ownable {
         projects[projectNonce] = Project({
             asset: token,
             bondingCurve: bondingCurve,
-            metadata: metadata
+            metadata: metadata,
+            dev: msg.sender
         });
 
         // store asset to project mapping
@@ -136,6 +148,26 @@ contract LunarDatabase is IDatabase, Ownable {
 
     function isBonded(address token) external view override returns (bool) {
         return IBondingCurve(projects[assetToProject[token]].bondingCurve).isBonded();
+    }
+
+    function isLunarPumpToken(address token) external view override returns (bool) {
+        return assetToProject[token] != 0 && projects[assetToProject[token]].asset == token;
+    }
+
+    function getBondingCurveForToken(address token) external view override returns (address) {
+        return projects[assetToProject[token]].bondingCurve;
+    }
+
+    function getProjectMetadata(address token) external view override returns (string[] memory) {
+        return projects[assetToProject[token]].metadata;
+    }
+
+    function getProjectDev(address token) external view override returns (address) {
+        return projects[assetToProject[token]].dev;
+    }
+
+    function getLiquidityLocker() external view override returns (address) {
+        return liquidityPermaLocker;
     }
 
 }
