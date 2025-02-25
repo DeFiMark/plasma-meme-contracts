@@ -21,9 +21,15 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
 
     address public database;
     
-    address public feeRecipient;
+    address private feeRecipient;
 
     bytes32 public INIT_CODE_PAIR_HASH;
+
+    bool public enforceDust;
+
+    constructor() {
+        enforceDust = true;
+    }
 
     modifier onlyLunarPumpTokens(address token) {
         require(IDatabase(database).isLunarPumpToken(token), "LiquidityAdder: Token is not a LunarPump Token");
@@ -39,6 +45,38 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)));
     }
 
+    function setBondFee(uint256 _bondFee) external onlyOwner {
+        bondFee = _bondFee;
+    }
+
+    function setDEX(address _dex) external onlyOwner {
+        dex = _dex;
+    }
+
+    function setFactory(address _factory) external onlyOwner {
+        factory = _factory;
+    }
+
+    function setWETH(address _WETH) external onlyOwner {
+        WETH = _WETH;
+    }
+
+    function setDatabase(address _database) external onlyOwner {
+        database = _database;
+    }
+
+    function setFeeRecipient(address _feeRecipient) external onlyOwner {
+        feeRecipient = _feeRecipient;
+    }
+
+    function setEnforceDust(bool _enforceDust) external onlyOwner {
+        enforceDust = _enforceDust;
+    }
+    
+    function setInitCodePairHash(bytes32 _INIT_CODE_PAIR_HASH) external onlyOwner {
+        INIT_CODE_PAIR_HASH = _INIT_CODE_PAIR_HASH;
+    }
+
     function bond(address token) external payable override onlyLunarPumpTokens(token) {
 
         // ensure request comes from the bonding curve
@@ -52,7 +90,7 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         uint256 tokenAmount = IERC20(token).balanceOf(address(this));
 
         // determine if LP has been dusted prior to liquidity add, send liquidity to dex and call sync if dusted
-        if (checkDusted(token)) {
+        if (checkDusted(token) && enforceDust) {
             // add liquidity at equal ratio, call sync
             address pair = pairFor(token, WETH);
             uint256 wethAmountInLP = IERC20(WETH).balanceOf(pair);
@@ -100,6 +138,10 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         // predict the LP token address for token
         address pair = pairFor(token, WETH);
         return IERC20(WETH).balanceOf(pair) > 0;
+    }
+
+    function getFeeRecipient() external view override returns (address) {
+        return feeRecipient;
     }
 
     // calculates the CREATE2 address for a pair without making any external calls

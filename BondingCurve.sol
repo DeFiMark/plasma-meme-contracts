@@ -7,7 +7,6 @@ pragma solidity 0.8.28;
     To add Tokens and Liquidity into the desired DEX
  */
 
-
 import "./interfaces/IBondingCurve.sol";
 import "./interfaces/ILunarPumpToken.sol";
 import "./interfaces/ILiquidityAdder.sol";
@@ -28,7 +27,11 @@ contract BondingCurveData {
     // bScaled = 0.0000000034 * 1e18
     uint256 public constant B_SCALED = 0.0000000034 ether;
 
+    // total supply of tokens in the bonding curve
     uint256 public bondingSupply;
+
+    // trade fee
+    uint8 public tradeFee;
 }
 
 // NOTE: ADD FAIL SAFE IN CASE OF UNFORSEEN EVENT -- WORST CASE IS FUNDS ARE LOCKED!!!
@@ -46,6 +49,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         liquidityAdder = liquidityAdder_;
         bonded = false;
         bondingSupply = 0;
+        tradeFee = 10; // 1%
     }
 
     // --------------------------------------------------------------------------------
@@ -63,11 +67,11 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         require(bondingSupply < BONDING_TARGET, "Bonding curve is full");
         require(!bonded, "Bonding curve is bonded");
 
-        // Convert incoming ETH (in wei) into our internal 1e18 scale.
-        uint256 ethInScaled = msg.value * 1e18 / 1 ether;
+        // determine eth in value from trade fee
+        uint256 ethIn = _takeFee(msg.value);
 
         // Determine the desired ΔS (in 1e18 scale) from the ETH sent.
-        tokensBought = solveIntegralBuy(bondingSupply, msg.value);
+        tokensBought = solveIntegralBuy(bondingSupply, ethIn);
 
         // Determine the remaining tokens available.
         uint256 remainingTokens = BONDING_TARGET - bondingSupply;
@@ -84,7 +88,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
             uint256 actualCostScaled = costForward(bondingSupply, tokensBought);
 
             // Ensure that the user sent at least the actual cost.
-            require(msg.value >= actualCostScaled, "Not enough ETH sent");
+            require(ethIn >= actualCostScaled, "Not enough ETH sent");
 
             // Update state: add the tokens bought.
             unchecked {
@@ -95,7 +99,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
             _mint(msg.sender, tokensBought);
 
             // Refund any ETH not used in the purchase.
-            uint256 refund = msg.value - actualCostScaled;
+            uint256 refund = ethIn - actualCostScaled;
 
             // bond the contract, sending necessary funds to fee receiver and dex
             _bond(address(this).balance - refund);
@@ -151,8 +155,11 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
             bondingSupply -= tokenAmount;
         }
 
+        // take fee
+        uint256 ethOut = _takeFee(ethOutWei);
+
         // send ETH
-        (bool success, ) = msg.sender.call{value: ethOutWei}("");
+        (bool success, ) = paybale(msg.sender).call{value: ethOut}("");
         require(success, "ETH transfer failed");
     }
 
@@ -337,6 +344,13 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         IERC20(token).transfer(liquidityAdder, TOKEN_TOTAL - BONDING_TARGET);
         ILiquidityAdder(liquidityAdder).bond{value: ethAmount}(token);
         // do liquidity adder stuff
+    }
+
+    function _takeFee(uint256 amount) internal returns (uint256) {
+        uint256 fee = ( amount * tradeFee ) / 1000;
+        (bool success, ) = payable(ILiquidityAdder(liquidityAdder).getFeeRecipient()).call{value: fee}("");
+        require(success, "BondingCurve: Failed to send fee");
+        return amount - fee;
     }
 
     function balanceOf(address user) public view returns (uint256) {
