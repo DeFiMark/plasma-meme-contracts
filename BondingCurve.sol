@@ -32,6 +32,20 @@ contract BondingCurveData {
 
     // trade fee
     uint8 public tradeFee;
+
+    // keep log of trades
+    struct Trade {
+        address maker;
+        int256 ethAmount;
+        int256 tokenAmount;
+        uint256 timestamp;
+    }
+
+    // trade nonce
+    uint256 public tradeNonce;
+
+    // mapping of trade nonce to trade
+    mapping (uint256 => Trade) public trades;
 }
 
 // NOTE: ADD FAIL SAFE IN CASE OF UNFORSEEN EVENT -- WORST CASE IS FUNDS ARE LOCKED!!!
@@ -126,6 +140,19 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
             }
         }
 
+        // log trade
+        trades[tradeNonce] = Trade({
+            maker: msg.sender,
+            ethAmount: int256(ethIn) * int256(-1),
+            tokenAmount: int256(tokensBought),
+            timestamp: block.timestamp
+        });
+
+        // increment trade nonce
+        unchecked {
+            ++tradeNonce;
+        }
+
         return tokensBought;
     }
 
@@ -153,6 +180,19 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         // update supply
         unchecked {
             bondingSupply -= tokenAmount;
+        }
+
+        // log trade
+        trades[tradeNonce] = Trade({
+            maker: msg.sender,
+            ethAmount: int256(ethOutWei),
+            tokenAmount: int256(tokenAmount) * int256(-1),
+            timestamp: block.timestamp
+        });
+
+        // increment trade nonce
+        unchecked {
+            ++tradeNonce;
         }
 
         // take fee
@@ -343,7 +383,6 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         bonded = true;
         IERC20(token).transfer(liquidityAdder, TOKEN_TOTAL - BONDING_TARGET);
         ILiquidityAdder(liquidityAdder).bond{value: ethAmount}(token);
-        // do liquidity adder stuff
     }
 
     function _takeFee(uint256 amount) internal returns (uint256) {
@@ -351,6 +390,52 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         (bool success, ) = payable(ILiquidityAdder(liquidityAdder).getFeeRecipient()).call{value: fee}("");
         require(success, "BondingCurve: Failed to send fee");
         return amount - fee;
+    }
+
+    function batchTrades(uint256 startIndex, uint256 endIndex) external view returns (Trade[] memory) {
+        if (endIndex > tradeNonce) {
+            endIndex = tradeNonce;
+        }
+        Trade[] memory _trades = new Trade[](endIndex - startIndex);
+        for (uint256 i = startIndex; i < endIndex;) {
+            _trades[i - startIndex] = trades[i];
+            unchecked { ++i; }
+        }
+        return _trades;
+    }
+
+    function getListOfTrades(uint256[] calldata indexes) external view returns (Trade[] memory) {
+        uint len = indexes.length;
+        Trade[] memory _trades = new Trade[](len);
+        for (uint256 i = 0; i < len;) {
+            _trades[i] = trades[indexes[i]];
+            unchecked { ++i; }
+        }
+        return _trades;
+    }
+
+
+    function getEvenlySplitPriceChanges(uint256 numDataPoints) external view returns (Trade[] memory) {
+        if (numDataPoints > tradeNonce) {
+            numDataPoints = tradeNonce;
+        }
+
+        // create array of trades
+        Trade[] memory _trades = new Trade[](numDataPoints);
+
+        // calculate step, how many price changes to skip
+        uint256 step = tradeNonce / ( numDataPoints - 1 );
+
+        // add all trades except most recent
+        for (uint256 i = 0; i < numDataPoints - 1;) {
+            _trades[i] = trades[i * step];
+            unchecked { ++i; }
+        }
+
+        // add most recent trade
+        _trades[numDataPoints - 1] = trades[tradeNonce - 1];
+
+        return _trades;
     }
 
     function balanceOf(address user) public view returns (uint256) {
