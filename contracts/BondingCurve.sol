@@ -46,6 +46,10 @@ contract BondingCurveData {
 
     // mapping of trade nonce to trade
     mapping (uint256 => Trade) public trades;
+
+    // Buy Event
+    event Buy(address indexed user, uint256 quantityETH, uint256 quantityTokens);
+    event Sell(address indexed user, uint256 quantityETH, uint256 quantityTokens);
 }
 
 // NOTE: ADD FAIL SAFE IN CASE OF UNFORSEEN EVENT -- WORST CASE IS FUNDS ARE LOCKED!!!
@@ -76,7 +80,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     *         then only the remaining tokens are bought and any extra ETH is refunded.
     * @dev Uses the forward integral to calculate cost.
     */
-    function buyTokens() external payable returns (uint256 tokensBought) {
+    function buyTokens(address recipient, uint256 minOut) external payable override returns (uint256 tokensBought) {
         require(msg.value > 0, "No ETH sent");
         require(bondingSupply < BONDING_TARGET, "Bonding curve is full");
         require(!bonded, "Bonding curve is bonded");
@@ -110,7 +114,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
             }
 
             // Mint tokens to the buyer.
-            _mint(msg.sender, tokensBought);
+            _mint(recipient, tokensBought);
 
             // Refund any ETH not used in the purchase.
             uint256 refund = ethIn - actualCostScaled;
@@ -120,11 +124,17 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
             
             // Refund any excess ETH
             if (refund > 0) {
-                (bool success, ) = msg.sender.call{value: refund}("");
+                (bool success, ) = payable(recipient).call{value: refund}("");
                 require(success, "Refund failed");
             }
 
         } else {
+
+            // ensure minOut is enforced
+            require(
+                tokensBought >= minOut,
+                'Too Few Tokens Received, Increase Slippage'
+            );
 
             // Update state: add the tokens bought.
             unchecked {
@@ -132,13 +142,16 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
             }
 
             // Mint tokens to the buyer.
-            _mint(msg.sender, tokensBought);
+            _mint(recipient, tokensBought);
 
             // see if bonded
             if (bondingSupply >= BONDING_TARGET) {
                 _bond(address(this).balance);
             }
         }
+
+        // emit event
+        emit Buy(recipient, ethIn, tokensBought);
 
         // log trade
         trades[tradeNonce] = Trade({
@@ -181,6 +194,9 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         unchecked {
             bondingSupply -= tokenAmount;
         }
+
+        // emit event
+        emit Sell(msg.sender, ethOutWei, tokenAmount);
 
         // log trade
         trades[tradeNonce] = Trade({

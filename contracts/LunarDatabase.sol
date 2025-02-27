@@ -51,6 +51,9 @@ contract LunarDatabase is IDatabase, Ownable {
     // Token Perma Locker
     address public liquidityPermaLocker;
 
+    // Event emitted when project is created
+    event NewTokenCreated(address token, address bondingCurve, uint nonce, bytes projectData);
+
     /**
         Sets the address of the LunarPumpTokenMasterCopy
      */
@@ -128,9 +131,17 @@ contract LunarDatabase is IDatabase, Ownable {
         // store asset to project mapping
         assetToProject[token] = projectNonce;
 
+        // emit new event
+        emit NewTokenCreated(token, bondingCurve, projectNonce, abi.encode(metadata, tokenPayload, bondingCurvePayload));
+
         // increment nonce
         unchecked {
             ++projectNonce;
+        }
+
+        // if user supplied more value than launch fee, use it to buy tokens for them
+        if (msg.value > launchFee) {
+            IBondingCurve(bondingCurve).buyTokens{value: msg.value - launchFee}(msg.sender, 0);
         }
     }
 

@@ -17,4 +17,6 @@ interface IBondingCurve {
     function __init__(bytes calldata payload, address token, address liquidityAdder) external;
 
     function getToken() external view returns (address);
+
+    function buyTokens(address recipient, uint256 minOut) external payable returns (uint256 tokensBought);
 }
