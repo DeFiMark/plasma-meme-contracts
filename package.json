@@ -29,6 +29,7 @@
     "hardhat": "^2.22.19"
   },
   "dependencies": {
-    "@nomiclabs/hardhat-etherscan": "^3.1.8"
+    "@nomiclabs/hardhat-etherscan": "^3.1.8",
+    "prb-math": "^2.4.3"
   }
 }

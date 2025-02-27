@@ -154,7 +154,7 @@ interface IUniswapV2Factory {
     function setFeeToSetter(address) external;
 }
 
-interface IPair is IERC20 {
+interface IPair {
 
     function DOMAIN_SEPARATOR() external view returns (bytes32);
     function PERMIT_TYPEHASH() external pure returns (bytes32);

@@ -10,7 +10,10 @@ pragma solidity 0.8.28;
 import "./interfaces/IBondingCurve.sol";
 import "./interfaces/ILunarPumpToken.sol";
 import "./interfaces/ILiquidityAdder.sol";
-import "./UD60x18/UD60x18.sol";
+import "prb-math/contracts/PRBMathUD60x18.sol";
+// import "@prb-math/contracts/PRBMathUD60x18.sol";
+// import "./UD60x18/UD60x18.sol";
+// import { UD60x18 } from "./UD60x18/ud60x18/ValueType.sol";
 
 contract BondingCurveData {
     uint32 internal versionNo;
@@ -55,7 +58,7 @@ contract BondingCurveData {
 // NOTE: ADD FAIL SAFE IN CASE OF UNFORSEEN EVENT -- WORST CASE IS FUNDS ARE LOCKED!!!
 contract BondingCurve is BondingCurveData, IBondingCurve {
 
-    using UD60x18 for uint256;
+    using PRBMathUD60x18 for uint256;
 
     function __init__(bytes calldata payload, address token_, address liquidityAdder_) external override {
         require(token == address(0), 'Already Initialized');
@@ -215,7 +218,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         uint256 ethOut = _takeFee(ethOutWei);
 
         // send ETH
-        (bool success, ) = paybale(msg.sender).call{value: ethOut}("");
+        (bool success, ) = payable(msg.sender).call{value: ethOut}("");
         require(success, "ETH transfer failed");
     }
 
@@ -324,7 +327,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         // but let's do it step by step:
         // ratio = bScaled.div(A_SCALED) => (b/a) in 1e18
         // then multiply by costIn => ratio.mul(_costInScaled)
-        uint256 bOverA = B_SCALED.mulDiv(1e18, A_SCALED); // = (bScaled * 1e18)/aScaled in 1e18
+        uint256 bOverA = PRBMathUD60x18.div(B_SCALED, A_SCALED); //B_SCALED.div(1e18, A_SCALED); // = (bScaled * 1e18)/aScaled in 1e18
         uint256 term = bOverA.mul(_costInScaled);        // => (b/a)*costIn in 1e18
 
         // inside = e^(bS) + (b/a)*costIn
@@ -381,7 +384,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
 
         // multiply by (a/b)
         // a/b => aScaled div bScaled in 1e18
-        uint256 aOverB = A_SCALED.mulDiv(1e18, B_SCALED);
+        uint256 aOverB = PRBMathUD60x18.div(A_SCALED, B_SCALED); //A_SCALED.mulDiv(1e18, B_SCALED);
         uint256 ethScaled = aOverB.mul(diff); // => (a/b)*( e^(bS) - e^(b(S - dS)) ) in 1e18
 
         return ethScaled;

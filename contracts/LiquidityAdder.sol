@@ -5,6 +5,7 @@ import "./interfaces/IDatabase.sol";
 import "./interfaces/IUniswapV2Router02.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/ILiquidityAdder.sol";
+import "./lib/Ownable.sol";
 
 /**
     Receives Tokens and Native Assets from the Bonding Curve and adds them to the desired DEX
@@ -13,22 +14,30 @@ import "./interfaces/ILiquidityAdder.sol";
  */
 contract LiquidityAdder is Ownable, ILiquidityAdder {
 
+    // Lunar Database
+    address public immutable database;
+
+    // Fee on bonding
     uint256 public bondFee = 200; // 20%
 
-    address public dex;
-    address public factory;
-    address public WETH;
-
-    address public database;
+    // DEX Info
+    address public dex = 0xD99D1c33F9fC3444f8101754aBC46c52416550D1;
+    address public factory = 0x6725F303b657a9451d8BA641348b6761A6CC7a17;
+    address public WETH = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd;
+    bytes32 public INIT_CODE_PAIR_HASH = 0xd0d4c4cd0848c93cb4fd1f498d7013ee6bfb25783ea21593d5834f5d250ece66;
     
+    // Fee Recipient Contract
     address private feeRecipient;
 
-    bytes32 public INIT_CODE_PAIR_HASH;
-
+    // Whether or not dust is enforced
     bool public enforceDust;
 
-    constructor() {
-        enforceDust = true;
+    // Emitted when a token successfully bonds
+    event Bonded(address token);
+
+    constructor(address _database) {
+        database = _database;
+        feeRecipient = msg.sender;
     }
 
     modifier onlyLunarPumpTokens(address token) {
@@ -59,10 +68,6 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
 
     function setWETH(address _WETH) external onlyOwner {
         WETH = _WETH;
-    }
-
-    function setDatabase(address _database) external onlyOwner {
-        database = _database;
     }
 
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
@@ -124,6 +129,9 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
             IDatabase(database).getLiquidityLocker(),
             block.timestamp + 100
         );
+
+        // emit Bonded event
+        emit Bonded(token);
     }
 
     function _takeFee(uint256 amount) internal returns (uint256 remainingForLiquidity) {

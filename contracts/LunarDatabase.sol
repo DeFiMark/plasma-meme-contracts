@@ -54,6 +54,11 @@ contract LunarDatabase is IDatabase, Ownable {
     // Event emitted when project is created
     event NewTokenCreated(address token, address bondingCurve, uint nonce, bytes projectData);
 
+    constructor() {
+        launchFee = 0.01 ether;
+        feeRecipient = msg.sender;
+    }
+
     /**
         Sets the address of the LunarPumpTokenMasterCopy
      */
@@ -169,11 +174,11 @@ contract LunarDatabase is IDatabase, Ownable {
         return projects[assetToProject[token]].bondingCurve;
     }
 
-    function getProjectMetadata(address token) external view override returns (string[] memory) {
+    function getProjectMetadata(address token) external view returns (string[] memory) {
         return projects[assetToProject[token]].metadata;
     }
 
-    function getProjectDev(address token) external view override returns (address) {
+    function getProjectDev(address token) external view returns (address) {
         return projects[assetToProject[token]].dev;
     }
 
