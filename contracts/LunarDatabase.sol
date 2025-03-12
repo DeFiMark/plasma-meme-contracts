@@ -241,4 +241,26 @@ contract LunarDatabase is IDatabase, Ownable {
     function totalSupply() external view returns (uint256) {
         return totalVolume;
     }
+
+    function numUsers() external view returns (uint256) {
+        return allUsers.length;
+    }
+
+    function paginateUsersAndVolumes(uint256 startIndex, uint256 endIndex) external view returns(
+        address[] memory users,
+        uint256[] memory volumes
+    ) {
+        if (endIndex > allUsers.length) {
+            endIndex = allUsers.length;
+        }
+
+        uint256 length = endIndex - startIndex;
+        users = new address[](length);
+        volumes = new uint256[](length);
+        for (uint256 i = startIndex; i < endIndex;) {
+            users[i - startIndex] = allUsers[i];
+            volumes[i - startIndex] = volumeFor[allUsers[i]];
+            unchecked { ++i; }
+        }
+    }
 }
