@@ -62,7 +62,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
 
     function __init__(bytes calldata payload, address token_, address liquidityAdder_) external override {
         require(token == address(0), 'Already Initialized');
-        require(token_ == address(0), 'Zero Address');
+        require(token_ != address(0), 'Zero Address');
         (
             versionNo
         ) = abi.decode(payload, (uint32));

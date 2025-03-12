@@ -130,7 +130,7 @@ contract LunarDatabase is IDatabase, Ownable {
             asset: token,
             bondingCurve: bondingCurve,
             metadata: metadata,
-            dev: msg.sender
+            dev: tx.origin
         });
 
         // store asset to project mapping
