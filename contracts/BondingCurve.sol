@@ -10,6 +10,8 @@ pragma solidity 0.8.28;
 import "./interfaces/IBondingCurve.sol";
 import "./interfaces/ILunarPumpToken.sol";
 import "./interfaces/ILiquidityAdder.sol";
+import "./interfaces/IFeeRecipient.sol";
+import "./interfaces/IDatabase.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
 // import "@prb-math/contracts/PRBMathUD60x18.sol";
 // import "./UD60x18/UD60x18.sol";
@@ -89,7 +91,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         require(!bonded, "Bonding curve is bonded");
 
         // determine eth in value from trade fee
-        uint256 ethIn = _takeFee(msg.value);
+        uint256 ethIn = _takeFee(recipient, msg.value);
 
         // Determine the desired ΔS (in 1e18 scale) from the ETH sent.
         tokensBought = solveIntegralBuy(bondingSupply, ethIn);
@@ -215,7 +217,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         }
 
         // take fee
-        uint256 ethOut = _takeFee(ethOutWei);
+        uint256 ethOut = _takeFee(msg.sender, ethOutWei);
 
         // send ETH
         (bool success, ) = payable(msg.sender).call{value: ethOut}("");
@@ -404,10 +406,18 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         ILiquidityAdder(liquidityAdder).bond{value: ethAmount}(token);
     }
 
-    function _takeFee(uint256 amount) internal returns (uint256) {
+    function _takeFee(address user, uint256 amount) internal returns (uint256) {
+
+        // split fee
         uint256 fee = ( amount * tradeFee ) / 1000;
-        (bool success, ) = payable(ILiquidityAdder(liquidityAdder).getFeeRecipient()).call{value: fee}("");
-        require(success, "BondingCurve: Failed to send fee");
+
+        // take fee
+        IFeeRecipient(ILiquidityAdder(liquidityAdder).getFeeRecipient()).takeVolumeFee{value: fee}(token);
+
+        // log value
+        IDatabase(ILiquidityAdder(liquidityAdder).getDatabase()).registerVolume(user, amount);
+
+        // return amount less fees
         return amount - fee;
     }
 

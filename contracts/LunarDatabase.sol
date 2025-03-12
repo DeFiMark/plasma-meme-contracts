@@ -27,6 +27,18 @@ contract LunarDatabase is IDatabase, Ownable {
     // Mapping of asset to project nonce
     mapping ( address => uint256 ) public assetToProject;
 
+    // Maps a bonding curve to a token
+    mapping ( address => address ) public bondingCurveToToken;
+
+    // Maps a user to volume bet on platform
+    mapping ( address => uint256 ) public volumeFor;
+
+    // Total Volume
+    uint256 public totalVolume;
+
+    // List of all users who have contributed volume
+    address[] public allUsers;
+
     // Master copy of the LunarPumpToken
     address internal lunarPumpTokenMasterCopy;
 
@@ -40,7 +52,7 @@ contract LunarDatabase is IDatabase, Ownable {
     uint256 public launchFee;
 
     // Fee recipient
-    address public feeRecipient;
+    address private feeRecipient;
 
     // Project nonce
     uint256 public projectNonce = 1;
@@ -51,8 +63,14 @@ contract LunarDatabase is IDatabase, Ownable {
     // Token Perma Locker
     address public liquidityPermaLocker;
 
+    // Data needed for token to display on scanners
+    string public constant name = "LunarVolume";
+    string public constant symbol = "LVolume";
+    uint8 public constant decimals = 18;
+
     // Event emitted when project is created
     event NewTokenCreated(address token, address bondingCurve, uint nonce, bytes projectData);
+    event Transfer(address indexed from, address indexed to, uint256 value);
 
     constructor() {
         launchFee = 0.01 ether;
@@ -108,6 +126,29 @@ contract LunarDatabase is IDatabase, Ownable {
         liquidityPermaLocker = _liquidityPermaLocker;
     }
 
+    function registerVolume(address user, uint256 amount) external {
+        if (projects[bondingCurveToToken[msg.sender]].bondingCurve != msg.sender) {
+            return;
+        }
+        if (amount == 0 || user == address(0)) {
+            return;
+        }
+
+        // if new user, push to list
+        if (volumeFor[user] == 0) {
+            allUsers.push(user);
+        }
+
+        // add to user volume
+        unchecked {
+            volumeFor[user] += amount;
+            totalVolume += amount;
+        }
+
+        // emit transfer
+        emit Transfer(address(0), user, amount);
+    }
+
     function launchProject(
         string[] calldata metadata,
         bytes calldata tokenPayload,
@@ -135,6 +176,9 @@ contract LunarDatabase is IDatabase, Ownable {
 
         // store asset to project mapping
         assetToProject[token] = projectNonce;
+
+        // store bonding curve to token launch
+        bondingCurveToToken[bondingCurve] = token;
 
         // emit new event
         emit NewTokenCreated(token, bondingCurve, projectNonce, abi.encode(metadata, tokenPayload, bondingCurvePayload));
@@ -186,4 +230,15 @@ contract LunarDatabase is IDatabase, Ownable {
         return liquidityPermaLocker;
     }
 
+    function getFeeRecipient() external view override returns (address) {
+        return feeRecipient;
+    }
+
+    function balanceOf(address user) external view returns (uint256) {
+        return volumeFor[user];
+    }
+
+    function totalSupply() external view returns (uint256) {
+        return totalVolume;
+    }
 }

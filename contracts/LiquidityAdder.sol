@@ -5,6 +5,7 @@ import "./interfaces/IDatabase.sol";
 import "./interfaces/IUniswapV2Router02.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/ILiquidityAdder.sol";
+import "./interfaces/IFeeRecipient.sol";
 import "./lib/Ownable.sol";
 
 /**
@@ -15,7 +16,7 @@ import "./lib/Ownable.sol";
 contract LiquidityAdder is Ownable, ILiquidityAdder {
 
     // Lunar Database
-    address public immutable database;
+    address private immutable database;
 
     // Fee on bonding
     uint256 public bondFee = 200; // 20%
@@ -25,9 +26,6 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
     address public factory = 0x6725F303b657a9451d8BA641348b6761A6CC7a17;
     address public WETH = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd;
     bytes32 public INIT_CODE_PAIR_HASH = 0xd0d4c4cd0848c93cb4fd1f498d7013ee6bfb25783ea21593d5834f5d250ece66;
-    
-    // Fee Recipient Contract
-    address private feeRecipient;
 
     // Whether or not dust is enforced
     bool public enforceDust;
@@ -37,7 +35,6 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
 
     constructor(address _database) {
         database = _database;
-        feeRecipient = msg.sender;
     }
 
     modifier onlyLunarPumpTokens(address token) {
@@ -70,10 +67,6 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         WETH = _WETH;
     }
 
-    function setFeeRecipient(address _feeRecipient) external onlyOwner {
-        feeRecipient = _feeRecipient;
-    }
-
     function setEnforceDust(bool _enforceDust) external onlyOwner {
         enforceDust = _enforceDust;
     }
@@ -91,7 +84,7 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         );
         
         // take fee
-        uint256 liquidityAmount = _takeFee(msg.value);
+        uint256 liquidityAmount = _takeFee(token, msg.value);
         uint256 tokenAmount = IERC20(token).balanceOf(address(this));
 
         // determine if LP has been dusted prior to liquidity add, send liquidity to dex and call sync if dusted
@@ -134,11 +127,15 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         emit Bonded(token);
     }
 
-    function _takeFee(uint256 amount) internal returns (uint256 remainingForLiquidity) {
-        uint256 fee = ( amount * bondFee ) / 1000;
-        (bool success, ) = feeRecipient.call{value: fee}("");
-        require(success, "LiquidityAdder: Failed to send fee");
+    function _takeFee(address token, uint256 amount) internal returns (uint256 remainingForLiquidity) {
 
+        // split fee
+        uint256 fee = ( amount * bondFee ) / 1000;
+
+        // send fee
+        IFeeRecipient(database.getFeeRecipient()).takeBondFee{value: fee}(token);
+
+        // return amount minus fee
         return amount - fee;
     }
 
@@ -149,7 +146,11 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
     }
 
     function getFeeRecipient() external view override returns (address) {
-        return feeRecipient;
+        return IDatabase(database).getFeeRecipient();
+    }
+
+    function getDatabase() external view override returns (address) {
+        return database;
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
