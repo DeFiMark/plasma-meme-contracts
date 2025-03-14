@@ -403,6 +403,11 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     function _bond(uint256 ethAmount) internal {
         bonded = true;
         IERC20(token).transfer(liquidityAdder, TOKEN_TOTAL - BONDING_TARGET);
+
+        // maybe, instead of a direct call, we do a low level call, catch if it reverts, keep existing state, 
+        // and allow approved caller to manually call bond and pass in params for dust, etc.
+        // this could be a failsafe script that is executed on a constantly running script
+        // so it would be added to some list we could read from
         ILiquidityAdder(liquidityAdder).bond{value: ethAmount}(token);
     }
 
