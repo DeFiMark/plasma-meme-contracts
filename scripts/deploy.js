@@ -67,26 +67,32 @@ async function main() {
     const LunarDatabase = await deployContract('LunarDatabase', 'contracts/LunarDatabase.sol:LunarDatabase', []);
     await sleep(10_000);
 
+    const LunarVolumeTracker = await deployContract('VolumeTracker', 'contracts/LunarVolumeTracker.sol:LunarVolumeTracker', [LunarDatabase.address])
+    await sleep(5_000);
+
     const LiquidityLocker = await deployContract('LiquidityLocker', 'contracts/LiquidityLocker.sol:LiquidityLocker', []);
-    await sleep(10_000);
+    await sleep(5_000);
     
     const LiquidityAdder = await deployContract('LiquidityAdder', 'contracts/LiquidityAdder.sol:LiquidityAdder', [LunarDatabase.address]);
-    await sleep(10_000);
+    await sleep(5_000);
 
     const LunarGenerator = await deployContract('LunarGenerator', 'contracts/LunarGenerator.sol:LunarGenerator', [LunarDatabase.address]);
-    await sleep(10_000);
+    await sleep(5_000);
 
     const LunarPumpToken = await deployContract('LunarPumpToken', 'contracts/LunarPumpToken.sol:LunarPumpToken', []);
-    await sleep(10_000);
+    await sleep(5_000);
 
     const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
     await sleep(10_000);
+
+    
 
     await verify(LunarDatabase.address, [], 'contracts/LunarDatabase.sol:LunarDatabase');
     await verify(LiquidityLocker.address, [], 'contracts/LiquidityLocker.sol:LiquidityLocker')
     await verify(LiquidityAdder.address, [LunarDatabase.address], 'contracts/LiquidityAdder.sol:LiquidityAdder')
     await verify(LunarGenerator.address, [LunarDatabase.address], 'contracts/LunarGenerator.sol:LunarGenerator')
     await verify(LunarPumpToken.address, [], 'contracts/LunarPumpToken.sol:LunarPumpToken')
+    await verify(LunarVolumeTracker.address, [LunarDatabase.address], 'contracts/LunarVolumeTracker.sol:LunarVolumeTracker')
     await verify(BondingCurve.address, [], 'contracts/BondingCurve.sol:BondingCurve')
 
     // set master copies
@@ -112,6 +118,11 @@ async function main() {
     await LunarDatabase.setLiquidityPermaLocker(LiquidityLocker.address, { nonce: getNonce() });
     await sleep(5000);
     console.log('Set LiquidityLocker');
+
+    // set setLunarVolumeTracker
+    await LunarDatabase.setLunarVolumeTracker(LunarVolumeTracker.address, { nonce: getNonce() });
+    await sleep(5000);
+    console.log('Set LunarVolumeTracker');
 }
 
 main()

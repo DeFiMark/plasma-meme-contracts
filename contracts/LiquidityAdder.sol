@@ -133,7 +133,7 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         uint256 fee = ( amount * bondFee ) / 1000;
 
         // send fee
-        IFeeRecipient(database.getFeeRecipient()).takeBondFee{value: fee}(token);
+        IFeeRecipient(IDatabase(database).getFeeRecipient()).takeBondFee{value: fee}(token);
 
         // return amount minus fee
         return amount - fee;

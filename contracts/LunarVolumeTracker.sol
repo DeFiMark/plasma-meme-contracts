@@ -24,6 +24,10 @@ contract LunarVolumeTracker is ILunarVolumeTracker, Ownable {
     uint8 public constant decimals = 18;
     event Transfer(address indexed from, address indexed to, uint256 value);
 
+    constructor(address _database) {
+        database = _database;
+    }
+
     function setDatabase(address _database) external onlyOwner {
         database = _database;
     }

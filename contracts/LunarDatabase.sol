@@ -220,7 +220,7 @@ contract LunarDatabase is IDatabase, Ownable {
         return IBondingCurve(projects[assetToProject[token]].bondingCurve).isBonded();
     }
 
-    function isBondedByID(uint256 projectID) external view override returns (bool) {
+    function isBondedByID(uint256 projectID) external view returns (bool) {
         return IBondingCurve(projects[projectID].bondingCurve).isBonded();
     }
 
@@ -248,25 +248,21 @@ contract LunarDatabase is IDatabase, Ownable {
         return feeRecipient;
     }
 
-    function getProjectInfoByToken(address token) external view override returns (address, address, string[] memory, address) {
+    function getProjectInfoByToken(address token) public view returns (address, address, string[] memory, address) {
         Project memory project = projects[assetToProject[token]];
         return (project.asset, project.bondingCurve, project.metadata, project.dev);
     }
 
     function batchGetProjectInfoByTokens(address[] calldata tokens) external view returns (address[] memory, address[] memory, string[][] memory, address[] memory) {
         
-        uint len = tokens.lenght;
+        uint len = tokens.length;
         address[] memory assets = new address[](len);
         address[] memory bondingCurves = new address[](len);
         string[][] memory metadata = new string[][](len);
         address[] memory devs = new address[](len);
 
         for (uint256 i = 0; i < len; i++) {
-            Project memory project = projects[assetToProject[tokens[i]]];
-            assets[i] = project.asset;
-            bondingCurves[i] = project.bondingCurve;
-            metadata[i] = project.metadata;
-            devs[i] = project.dev;
+            ( assets[i], bondingCurves[i], metadata[i], devs[i] ) = getProjectInfoByToken(tokens[i]);
         }
 
         return (assets, bondingCurves, metadata, devs);
@@ -274,7 +270,7 @@ contract LunarDatabase is IDatabase, Ownable {
 
     function batchGetProjectInfo(uint256[] calldata projectIDs) public view returns (address[] memory, address[] memory, string[][] memory, address[] memory) {
         
-        uint len = projectIDs.lenght;
+        uint len = projectIDs.length;
         address[] memory assets = new address[](len);
         address[] memory bondingCurves = new address[](len);
         string[][] memory metadata = new string[][](len);
@@ -302,6 +298,7 @@ contract LunarDatabase is IDatabase, Ownable {
             projectIDs[i - startIndex] = EnumerableSet.at(bondedProjects, i);
             unchecked { ++i; }
         }
+        return projectIDs;
     }
 
     function paginatePrebondedProjectIDs(uint256 startIndex, uint256 endIndex) public view returns (uint256[] memory) {
@@ -315,12 +312,13 @@ contract LunarDatabase is IDatabase, Ownable {
             projectIDs[i - startIndex] = EnumerableSet.at(preBondedProjects, i);
             unchecked { ++i; }
         }
+        return projectIDs;
     }
 
     function paginatePrebondedProjects(uint256 startIndex, uint256 endIndex) external view returns(address[] memory, address[] memory, string[][] memory, address[] memory) {
         uint256[] memory projectIDs = paginatePrebondedProjectIDs(startIndex, endIndex);
 
-        uint len = projectIDs.lenght;
+        uint len = projectIDs.length;
         address[] memory assets = new address[](len);
         address[] memory bondingCurves = new address[](len);
         string[][] memory metadata = new string[][](len);

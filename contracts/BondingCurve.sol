@@ -13,9 +13,6 @@ import "./interfaces/ILiquidityAdder.sol";
 import "./interfaces/IFeeRecipient.sol";
 import "./interfaces/IDatabase.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
-// import "@prb-math/contracts/PRBMathUD60x18.sol";
-// import "./UD60x18/UD60x18.sol";
-// import { UD60x18 } from "./UD60x18/ud60x18/ValueType.sol";
 
 contract BondingCurveData {
     uint32 internal versionNo;
@@ -43,6 +40,7 @@ contract BondingCurveData {
         address maker;
         int256 ethAmount;
         int256 tokenAmount;
+        uint256 currentSupply;
         uint256 timestamp;
     }
 
@@ -163,6 +161,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
             maker: msg.sender,
             ethAmount: int256(ethIn) * int256(-1),
             tokenAmount: int256(tokensBought),
+            currentSupply: bondingSupply, 
             timestamp: block.timestamp
         });
 
@@ -208,6 +207,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
             maker: msg.sender,
             ethAmount: int256(ethOutWei),
             tokenAmount: int256(tokenAmount) * int256(-1),
+            currentSupply: bondingSupply,
             timestamp: block.timestamp
         });
 
@@ -464,12 +464,9 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         // create array of trades
         Trade[] memory _trades = new Trade[](numDataPoints);
 
-        // calculate step, how many price changes to skip
-        uint256 step = tradeNonce / ( numDataPoints - 1 );
-
         // add all trades except most recent
         for (uint256 i = 0; i < numDataPoints - 1;) {
-            _trades[i] = trades[i * step];
+            _trades[i] = trades[( i * tradeNonce ) / ( numDataPoints - 1 )];
             unchecked { ++i; }
         }
 

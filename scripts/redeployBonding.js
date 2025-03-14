@@ -65,7 +65,7 @@ async function main() {
     // await verify(Bacarrat.address, BaccaratArgs, 'contracts/Baccarat/Baccarat.sol:Baccarat');
 
     // const LunarDatabase = await deployContract('LunarDatabase', 'contracts/LunarDatabase.sol:LunarDatabase', []);
-    const LunarDatabase = await fetchContract('contracts/LunarDatabase.sol:LunarDatabase', '0x7a190a6E591589A59fD3dF92C14cc5c6b0903AAC');
+    const LunarDatabase = await fetchContract('contracts/LunarDatabase.sol:LunarDatabase', '0x5d828b744A26dF3f300cbe4Dd8B08b2AF684a1CE');
     await sleep(5_000);
 
     const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
