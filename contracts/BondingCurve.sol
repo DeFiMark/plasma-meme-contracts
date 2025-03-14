@@ -401,8 +401,15 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     }
 
     function _bond(uint256 ethAmount) internal {
+
+        // set bonded
         bonded = true;
+
+        // transfer tokens to liquidity adder
         IERC20(token).transfer(liquidityAdder, TOKEN_TOTAL - BONDING_TARGET);
+
+        // bond project in database
+        IDatabase(ILiquidityAdder(liquidityAdder).getDatabase()).bondProject();
 
         // maybe, instead of a direct call, we do a low level call, catch if it reverts, keep existing state, 
         // and allow approved caller to manually call bond and pass in params for dust, etc.

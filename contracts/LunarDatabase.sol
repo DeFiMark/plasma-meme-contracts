@@ -8,6 +8,8 @@ pragma solidity 0.8.28;
 import "./interfaces/IDatabase.sol";
 import "./interfaces/IBondingCurve.sol";
 import "./interfaces/ILunarGenerator.sol";
+import "./interfaces/ILunarVolumeTracker.sol";
+import "./lib/EnumerableSet.sol";
 import "./lib/Ownable.sol";
 import "./lib/TransferHelper.sol";
 
@@ -29,15 +31,6 @@ contract LunarDatabase is IDatabase, Ownable {
 
     // Maps a bonding curve to a token
     mapping ( address => address ) public bondingCurveToToken;
-
-    // Maps a user to volume bet on platform
-    mapping ( address => uint256 ) public volumeFor;
-
-    // Total Volume
-    uint256 public totalVolume;
-
-    // List of all users who have contributed volume
-    address[] public allUsers;
 
     // Master copy of the LunarPumpToken
     address internal lunarPumpTokenMasterCopy;
@@ -63,14 +56,17 @@ contract LunarDatabase is IDatabase, Ownable {
     // Token Perma Locker
     address public liquidityPermaLocker;
 
-    // Data needed for token to display on scanners
-    string public constant name = "LunarVolume";
-    string public constant symbol = "LVolume";
-    uint8 public constant decimals = 18;
+    // Lunar Volume Tracker
+    address public lunarVolumeTracker;
+
+    // List of all bonded projects
+    EnumerableSet.UintSet private bondedProjects;
+
+    // Lits of all pre-bonded projects
+    EnumerableSet.UintSet private preBondedProjects;
 
     // Event emitted when project is created
     event NewTokenCreated(address token, address bondingCurve, uint nonce, bytes projectData);
-    event Transfer(address indexed from, address indexed to, uint256 value);
 
     constructor() {
         launchFee = 0.01 ether;
@@ -120,33 +116,44 @@ contract LunarDatabase is IDatabase, Ownable {
     }
 
     /**
+        Sets the lunar volume tracker
+     */
+    function setLunarVolumeTracker(address _lunarVolumeTracker) external onlyOwner {
+        lunarVolumeTracker = _lunarVolumeTracker;
+    }
+
+    /**
         Sets the token perma locker
      */
     function setLiquidityPermaLocker(address _liquidityPermaLocker) external onlyOwner {
         liquidityPermaLocker = _liquidityPermaLocker;
     }
 
-    function registerVolume(address user, uint256 amount) external {
-        if (projects[bondingCurveToToken[msg.sender]].bondingCurve != msg.sender) {
+    function registerVolume(address user, uint256 amount) external override {
+        if (projects[assetToProject[bondingCurveToToken[msg.sender]]].bondingCurve != msg.sender) {
             return;
         }
-        if (amount == 0 || user == address(0)) {
+        if (amount == 0 || user == address(0) || lunarVolumeTracker == address(0)) {
             return;
         }
 
-        // if new user, push to list
-        if (volumeFor[user] == 0) {
-            allUsers.push(user);
+        // register volume
+        ILunarVolumeTracker(lunarVolumeTracker).addVolume(user, amount);
+    }
+
+    function bondProject() external override {
+
+        // fetch project from bonding curve
+        uint256 projectID = assetToProject[bondingCurveToToken[msg.sender]];
+        if (projects[projectID].bondingCurve != msg.sender) {
+            return;
         }
 
-        // add to user volume
-        unchecked {
-            volumeFor[user] += amount;
-            totalVolume += amount;
-        }
+        // add to bonded projects
+        EnumerableSet.add(bondedProjects, projectID);
 
-        // emit transfer
-        emit Transfer(address(0), user, amount);
+        // remove from pre-bonded projects
+        EnumerableSet.remove(preBondedProjects, projectID);
     }
 
     function launchProject(
@@ -180,6 +187,9 @@ contract LunarDatabase is IDatabase, Ownable {
         // store bonding curve to token launch
         bondingCurveToToken[bondingCurve] = token;
 
+        // add to list
+        EnumerableSet.add(preBondedProjects, projectNonce);
+
         // emit new event
         emit NewTokenCreated(token, bondingCurve, projectNonce, abi.encode(metadata, tokenPayload, bondingCurvePayload));
 
@@ -210,6 +220,10 @@ contract LunarDatabase is IDatabase, Ownable {
         return IBondingCurve(projects[assetToProject[token]].bondingCurve).isBonded();
     }
 
+    function isBondedByID(uint256 projectID) external view override returns (bool) {
+        return IBondingCurve(projects[projectID].bondingCurve).isBonded();
+    }
+
     function isLunarPumpToken(address token) external view override returns (bool) {
         return assetToProject[token] != 0 && projects[assetToProject[token]].asset == token;
     }
@@ -234,33 +248,100 @@ contract LunarDatabase is IDatabase, Ownable {
         return feeRecipient;
     }
 
-    function balanceOf(address user) external view returns (uint256) {
-        return volumeFor[user];
+    function getProjectInfoByToken(address token) external view override returns (address, address, string[] memory, address) {
+        Project memory project = projects[assetToProject[token]];
+        return (project.asset, project.bondingCurve, project.metadata, project.dev);
     }
 
-    function totalSupply() external view returns (uint256) {
-        return totalVolume;
+    function batchGetProjectInfoByTokens(address[] calldata tokens) external view returns (address[] memory, address[] memory, string[][] memory, address[] memory) {
+        
+        uint len = tokens.lenght;
+        address[] memory assets = new address[](len);
+        address[] memory bondingCurves = new address[](len);
+        string[][] memory metadata = new string[][](len);
+        address[] memory devs = new address[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            Project memory project = projects[assetToProject[tokens[i]]];
+            assets[i] = project.asset;
+            bondingCurves[i] = project.bondingCurve;
+            metadata[i] = project.metadata;
+            devs[i] = project.dev;
+        }
+
+        return (assets, bondingCurves, metadata, devs);
     }
 
-    function numUsers() external view returns (uint256) {
-        return allUsers.length;
+    function batchGetProjectInfo(uint256[] calldata projectIDs) public view returns (address[] memory, address[] memory, string[][] memory, address[] memory) {
+        
+        uint len = projectIDs.lenght;
+        address[] memory assets = new address[](len);
+        address[] memory bondingCurves = new address[](len);
+        string[][] memory metadata = new string[][](len);
+        address[] memory devs = new address[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            Project memory project = projects[projectIDs[i]];
+            assets[i] = project.asset;
+            bondingCurves[i] = project.bondingCurve;
+            metadata[i] = project.metadata;
+            devs[i] = project.dev;
+        }
+
+        return (assets, bondingCurves, metadata, devs);
     }
 
-    function paginateUsersAndVolumes(uint256 startIndex, uint256 endIndex) external view returns(
-        address[] memory users,
-        uint256[] memory volumes
-    ) {
-        if (endIndex > allUsers.length) {
-            endIndex = allUsers.length;
+    function paginateBondedProjectIDs(uint256 startIndex, uint256 endIndex) external view returns (uint256[] memory) {
+        if (endIndex > EnumerableSet.length(bondedProjects)) {
+            endIndex = EnumerableSet.length(bondedProjects);
         }
 
         uint256 length = endIndex - startIndex;
-        users = new address[](length);
-        volumes = new uint256[](length);
+        uint256[] memory projectIDs = new uint256[](length);
         for (uint256 i = startIndex; i < endIndex;) {
-            users[i - startIndex] = allUsers[i];
-            volumes[i - startIndex] = volumeFor[allUsers[i]];
+            projectIDs[i - startIndex] = EnumerableSet.at(bondedProjects, i);
             unchecked { ++i; }
         }
+    }
+
+    function paginatePrebondedProjectIDs(uint256 startIndex, uint256 endIndex) public view returns (uint256[] memory) {
+        if (endIndex > EnumerableSet.length(preBondedProjects)) {
+            endIndex = EnumerableSet.length(preBondedProjects);
+        }
+
+        uint256 length = endIndex - startIndex;
+        uint256[] memory projectIDs = new uint256[](length);
+        for (uint256 i = startIndex; i < endIndex;) {
+            projectIDs[i - startIndex] = EnumerableSet.at(preBondedProjects, i);
+            unchecked { ++i; }
+        }
+    }
+
+    function paginatePrebondedProjects(uint256 startIndex, uint256 endIndex) external view returns(address[] memory, address[] memory, string[][] memory, address[] memory) {
+        uint256[] memory projectIDs = paginatePrebondedProjectIDs(startIndex, endIndex);
+
+        uint len = projectIDs.lenght;
+        address[] memory assets = new address[](len);
+        address[] memory bondingCurves = new address[](len);
+        string[][] memory metadata = new string[][](len);
+        address[] memory devs = new address[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            Project memory project = projects[projectIDs[i]];
+            assets[i] = project.asset;
+            bondingCurves[i] = project.bondingCurve;
+            metadata[i] = project.metadata;
+            devs[i] = project.dev;
+        }
+
+        return (assets, bondingCurves, metadata, devs);
+    }
+
+    function numPrebondedProjects() external view returns (uint256) {
+        return EnumerableSet.length(preBondedProjects);
+    }
+
+    function numBondedProjects() external view returns (uint256) {
+        return EnumerableSet.length(bondedProjects);
     }
 }
