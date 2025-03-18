@@ -32,6 +32,9 @@ contract LunarDatabase is IDatabase, Ownable {
     // Maps a bonding curve to a token
     mapping ( address => address ) public bondingCurveToToken;
 
+    // Maps an address to a list of projects they have launched
+    mapping ( address => uint256[] ) public allDevProjects;
+
     // Master copy of the LunarPumpToken
     address internal lunarPumpTokenMasterCopy;
 
@@ -66,7 +69,7 @@ contract LunarDatabase is IDatabase, Ownable {
     EnumerableSet.UintSet private preBondedProjects;
 
     // Event emitted when project is created
-    event NewTokenCreated(address token, address bondingCurve, uint nonce, bytes projectData);
+    event NewTokenCreated(address indexed dev, address token, address bondingCurve, uint nonce, bytes projectData);
 
     constructor() {
         launchFee = 0.01 ether;
@@ -160,7 +163,7 @@ contract LunarDatabase is IDatabase, Ownable {
         string[] calldata metadata,
         bytes calldata tokenPayload,
         bytes calldata bondingCurvePayload
-    ) external payable {
+    ) external payable returns (uint256) {
         // ensure fees are taken
         require(
             msg.value >= launchFee,
@@ -190,8 +193,11 @@ contract LunarDatabase is IDatabase, Ownable {
         // add to list
         EnumerableSet.add(preBondedProjects, projectNonce);
 
+        // add to dev list
+        allDevProjects[tx.origin].push(projectNonce);
+
         // emit new event
-        emit NewTokenCreated(token, bondingCurve, projectNonce, abi.encode(metadata, tokenPayload, bondingCurvePayload));
+        emit NewTokenCreated(tx.origin, token, bondingCurve, projectNonce, abi.encode(metadata, tokenPayload, bondingCurvePayload));
 
         // increment nonce
         unchecked {
@@ -202,10 +208,27 @@ contract LunarDatabase is IDatabase, Ownable {
         if (msg.value > launchFee) {
             IBondingCurve(bondingCurve).buyTokens{value: msg.value - launchFee}(msg.sender, 0);
         }
+
+        return projectNonce - 1;
     }
 
     function getLunarPumpTokenMasterCopy() external view override returns (address) {
         return lunarPumpTokenMasterCopy;
+    }
+
+    function getAllDevProjects(address dev) external view returns (uint256[] memory) {
+        return allDevProjects[dev];
+    }
+
+    function getNumDevProjects(address dev) external view returns (uint256) {
+        return allDevProjects[dev].length;
+    }
+
+    function getLatestDevProject(address dev) external view returns (uint256) {
+        if (allDevProjects[dev].length == 0) {
+            return 0;
+        }
+        return allDevProjects[dev][allDevProjects[dev].length - 1];
     }
 
     function getBondingCurveMasterCopy() external view override returns (address) {

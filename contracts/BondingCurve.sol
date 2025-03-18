@@ -70,7 +70,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         liquidityAdder = liquidityAdder_;
         bonded = false;
         bondingSupply = 0;
-        tradeFee = 10; // 1%
+        tradeFee = 20; // 2%
     }
 
     // --------------------------------------------------------------------------------
