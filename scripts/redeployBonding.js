@@ -60,23 +60,26 @@ async function main() {
     nonceOffset = 0;
     console.log('Account nonce: ', baseNonce);
 
-    // const Bacarrat = await deployContract('Bacarrat', 'contracts/Baccarat/Baccarat.sol:Baccarat', BaccaratArgs);
-    // await sleep(10000);
-    // await verify(Bacarrat.address, BaccaratArgs, 'contracts/Baccarat/Baccarat.sol:Baccarat');
-
     // const LunarDatabase = await deployContract('LunarDatabase', 'contracts/LunarDatabase.sol:LunarDatabase', []);
-    const LunarDatabase = await fetchContract('contracts/LunarDatabase.sol:LunarDatabase', '0x5d828b744A26dF3f300cbe4Dd8B08b2AF684a1CE');
+    const LunarDatabase = await fetchContract('contracts/LunarDatabase.sol:LunarDatabase', '0xc48556Da0E6a7af9b175e907c7Be8e8CB6070e3D');
     await sleep(5_000);
 
-    const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
+    const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', [owner.address]);
     await sleep(10_000);
 
-    await verify(BondingCurve.address, [], 'contracts/BondingCurve.sol:BondingCurve');
+    await verify(FeeReceiver.address, [owner.address], 'contracts/FeeReceiver.sol:FeeReceiver');
 
-    // set master copies
-    await LunarDatabase.setLunarPumpBondingCurveMasterCopy(BondingCurve.address, { nonce: getNonce() });
-    await sleep(5000);
-    console.log('Set Bonding Curve Master Copy');
+    await LunarDatabase.setFeeRecipient(FeeReceiver.address, { nonce: getNonce() });
+    console.log('Set Fee receiver');
+    // const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
+    // await sleep(10_000);
+
+    // await verify(BondingCurve.address, [], 'contracts/BondingCurve.sol:BondingCurve');
+
+    // // set master copies
+    // await LunarDatabase.setLunarPumpBondingCurveMasterCopy(BondingCurve.address, { nonce: getNonce() });
+    // await sleep(5000);
+    // console.log('Set Bonding Curve Master Copy');
 
 }
 
