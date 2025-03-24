@@ -64,22 +64,31 @@ async function main() {
     const LunarDatabase = await fetchContract('contracts/LunarDatabase.sol:LunarDatabase', '0xc48556Da0E6a7af9b175e907c7Be8e8CB6070e3D');
     await sleep(5_000);
 
-    const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', [owner.address]);
-    await sleep(10_000);
 
-    await verify(FeeReceiver.address, [owner.address], 'contracts/FeeReceiver.sol:FeeReceiver');
-
-    await LunarDatabase.setFeeRecipient(FeeReceiver.address, { nonce: getNonce() });
-    console.log('Set Fee receiver');
-    // const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
+    // const SupplyFetcher = await deployContract('SupplyFetcher', 'contracts/SupplyFetcher.sol:SupplyFetcher', []);
     // await sleep(10_000);
 
-    // await verify(BondingCurve.address, [], 'contracts/BondingCurve.sol:BondingCurve');
+    // await verify(SupplyFetcher.address, [], 'contracts/SupplyFetcher.sol:SupplyFetcher');
 
-    // // set master copies
-    // await LunarDatabase.setLunarPumpBondingCurveMasterCopy(BondingCurve.address, { nonce: getNonce() });
-    // await sleep(5000);
-    // console.log('Set Bonding Curve Master Copy');
+    // const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', [owner.address]);
+    // await sleep(10_000);
+
+    // await verify(FeeReceiver.address, [owner.address], 'contracts/FeeReceiver.sol:FeeReceiver');
+
+    // await LunarDatabase.setFeeRecipient(FeeReceiver.address, { nonce: getNonce() });
+    // console.log('Set Fee receiver');
+
+
+
+    const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
+    await sleep(10_000);
+
+    await verify(BondingCurve.address, [], 'contracts/BondingCurve.sol:BondingCurve');
+
+    // set master copies
+    await LunarDatabase.setLunarPumpBondingCurveMasterCopy(BondingCurve.address, { nonce: getNonce() });
+    await sleep(5000);
+    console.log('Set Bonding Curve Master Copy');
 
 }
 

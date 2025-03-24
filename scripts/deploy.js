@@ -85,8 +85,14 @@ async function main() {
     const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
     await sleep(10_000);
 
-    
+    const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', [owner.address]);
+    await sleep(10_000);
 
+    const SupplyFetcher = await deployContract('SupplyFetcher', 'contracts/SupplyFetcher.sol:SupplyFetcher', []);
+    await sleep(10_000);
+
+    await verify(SupplyFetcher.address, [], 'contracts/SupplyFetcher.sol:SupplyFetcher');
+    await verify(FeeReceiver.address, [owner.address], 'contracts/FeeReceiver.sol:FeeReceiver');
     await verify(LunarDatabase.address, [], 'contracts/LunarDatabase.sol:LunarDatabase');
     await verify(LiquidityLocker.address, [], 'contracts/LiquidityLocker.sol:LiquidityLocker')
     await verify(LiquidityAdder.address, [LunarDatabase.address], 'contracts/LiquidityAdder.sol:LiquidityAdder')
@@ -123,6 +129,10 @@ async function main() {
     await LunarDatabase.setLunarVolumeTracker(LunarVolumeTracker.address, { nonce: getNonce() });
     await sleep(5000);
     console.log('Set LunarVolumeTracker');
+
+    await LunarDatabase.setFeeRecipient(FeeReceiver.address, { nonce: getNonce() });
+    await sleep(5000);
+    console.log('Set Fee receiver');
 }
 
 main()

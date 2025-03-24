@@ -12,6 +12,7 @@ import "./interfaces/ILunarPumpToken.sol";
 import "./interfaces/ILiquidityAdder.sol";
 import "./interfaces/IFeeRecipient.sol";
 import "./interfaces/IDatabase.sol";
+import "./lib/EnumerableSet.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
 
 contract BondingCurveData {
@@ -35,6 +36,9 @@ contract BondingCurveData {
     // trade fee
     uint8 public tradeFee;
 
+    // total volume
+    uint256 public totalVolume;
+
     // keep log of trades
     struct Trade {
         address maker;
@@ -49,6 +53,9 @@ contract BondingCurveData {
 
     // mapping of trade nonce to trade
     mapping (uint256 => Trade) public trades;
+
+    // Holder list
+    EnumerableSet.AddressSet internal holders;
 
     // Buy Event
     event Buy(address indexed user, uint256 quantityETH, uint256 quantityTokens);
@@ -393,11 +400,19 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     }
 
     function _mint(address to, uint256 amount) internal {
+        if (ILunarPumpToken(token).balanceOf(to) == 0 && amount > 0) {
+            EnumerableSet.add(holders, to);
+        }
+
         ILunarPumpToken(token).transfer(to, amount);
     }
 
     function _burn(address from, uint256 amount) internal {
         ILunarPumpToken(token).bondingCurveTransferFrom(from, address(this), amount);
+
+        if (ILunarPumpToken(token).balanceOf(from) == 0 && EnumerableSet.contains(holders, from)) {
+            EnumerableSet.remove(holders, from);
+        }
     }
 
     function _bond(uint256 ethAmount) internal {
@@ -428,6 +443,11 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
 
         // log value
         IDatabase(ILiquidityAdder(liquidityAdder).getDatabase()).registerVolume(user, amount);
+
+        // track our own volume
+        unchecked {
+            totalVolume += amount;
+        }
 
         // return amount less fees
         return amount - fee;
@@ -499,5 +519,50 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
 
     function getToken() external view override returns (address) {
         return token;
+    }
+
+    function getHolders() external view returns (address[] memory) {
+        return EnumerableSet.values(holders);
+    }
+
+    function getNumHolders() external view returns (uint256) {
+        return EnumerableSet.length(holders);
+    }
+
+    function paginateHolders(uint256 startIndex, uint256 endIndex) external view returns (address[] memory) {
+        if (endIndex > EnumerableSet.length(holders)) {
+            endIndex = EnumerableSet.length(holders);
+        }
+        address[] memory _holders = new address[](endIndex - startIndex);
+        for (uint i = startIndex; i < endIndex;) {
+            _holders[i - startIndex] = EnumerableSet.at(holders, i);
+            unchecked { ++i; }
+        }
+        return _holders;
+    }
+
+    function paginateHoldersAndBalances(uint256 startIndex, uint256 endIndex) external view returns (address[] memory, uint256[] memory) {
+        if (endIndex > EnumerableSet.length(holders)) {
+            endIndex = EnumerableSet.length(holders);
+        }
+        address[] memory _holders = new address[](endIndex - startIndex);
+        uint256[] memory balances = new uint256[](endIndex - startIndex);
+        for (uint i = startIndex; i < endIndex;) {
+            address holder = EnumerableSet.at(holders, i);
+            _holders[i - startIndex] = holder;
+            balances[i - startIndex] = ILunarPumpToken(token).balanceOf(holder);
+            unchecked { ++i; }
+        }
+        return ( _holders, balances );
+    }
+
+    function viewAllHoldersAndBalances() external view returns (address[] memory, uint256[] memory) {
+        uint256 length = EnumerableSet.length(holders);
+        uint256[] memory balances = new uint256[](length);
+        for (uint i = 0; i < length;) {
+            balances[i] = ILunarPumpToken(token).balanceOf(EnumerableSet.at(holders, i));
+            unchecked { ++i; }
+        }
+        return ( EnumerableSet.values(holders), balances );
     }
 }
