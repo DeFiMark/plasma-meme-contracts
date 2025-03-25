@@ -21,17 +21,17 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
     // Fee on bonding
     uint256 public bondFee = 200; // 20%
 
+    // token slippage
+    uint256 public tokenSlippage = 92;
+
     // DEX Info
-    address public dex = 0xD99D1c33F9fC3444f8101754aBC46c52416550D1;
-    address public factory = 0x6725F303b657a9451d8BA641348b6761A6CC7a17;
-    address public WETH = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd;
-    bytes32 public INIT_CODE_PAIR_HASH = 0xd0d4c4cd0848c93cb4fd1f498d7013ee6bfb25783ea21593d5834f5d250ece66;
+    address public dex = 0x10ED43C718714eb63d5aA57B78B54704E256024E;
+    address public factory = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73;
+    address public WETH = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+    bytes32 public INIT_CODE_PAIR_HASH = 0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5;
 
     // Whether or not dust is enforced
     bool public enforceDust;
-
-    // Emitted when a token successfully bonds
-    event Bonded(address token);
 
     constructor(address _database) {
         database = _database;
@@ -57,6 +57,10 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
 
     function setDEX(address _dex) external onlyOwner {
         dex = _dex;
+    }
+
+    function setTokenSlippage(uint256 newSlippage) external onlyOwner {
+        tokenSlippage = newSlippage;
     }
 
     function setFactory(address _factory) external onlyOwner {
@@ -117,14 +121,11 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         IUniswapV2Router02(dex).addLiquidityETH{value: liquidityAmount}(
             token,
             tokenAmount,
-            ( tokenAmount * 9 ) / 10,
-            ( liquidityAmount * 9 ) / 10,
+            ( tokenAmount * tokenSlippage ) / 100,
+            ( liquidityAmount * tokenSlippage ) / 100,
             IDatabase(database).getLiquidityLocker(),
             block.timestamp + 100
         );
-
-        // emit Bonded event
-        emit Bonded(token);
     }
 
     function _takeFee(address token, uint256 amount) internal returns (uint256 remainingForLiquidity) {

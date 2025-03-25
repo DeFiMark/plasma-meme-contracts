@@ -70,10 +70,12 @@ contract LunarDatabase is IDatabase, Ownable {
 
     // Event emitted when project is created
     event NewTokenCreated(address indexed dev, address token, address bondingCurve, uint nonce, bytes projectData);
+    event Bonded(address token);
 
     constructor() {
         launchFee = 0.01 ether;
         feeRecipient = msg.sender;
+        liquidityPermaLocker = 0x000000000000000000000000000000000000dEaD;
     }
 
     /**
@@ -148,7 +150,7 @@ contract LunarDatabase is IDatabase, Ownable {
 
         // fetch project from bonding curve
         uint256 projectID = assetToProject[bondingCurveToToken[msg.sender]];
-        if (projects[projectID].bondingCurve != msg.sender) {
+        if (projects[projectID].bondingCurve != msg.sender || projectID == 0) {
             return;
         }
 
@@ -157,6 +159,9 @@ contract LunarDatabase is IDatabase, Ownable {
 
         // remove from pre-bonded projects
         EnumerableSet.remove(preBondedProjects, projectID);
+
+        // emit Bonded event
+        emit Bonded(bondingCurveToToken[msg.sender]);
     }
 
     function launchProject(

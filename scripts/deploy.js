@@ -60,10 +60,11 @@ async function main() {
     nonceOffset = 0;
     console.log('Account nonce: ', baseNonce);
 
-    // const Bacarrat = await deployContract('Bacarrat', 'contracts/Baccarat/Baccarat.sol:Baccarat', BaccaratArgs);
-    // await sleep(10000);
-    // await verify(Bacarrat.address, BaccaratArgs, 'contracts/Baccarat/Baccarat.sol:Baccarat');
-
+    // VARIABLES TO MANUALLY SET BEFORE REDEPLOYING ON EACH CHAIN:
+    // Database.launchFee
+    // BondingCurve.A and BondingCurve.B
+    // LiquidityAdder -- DEX INFO
+    
     const INFFeeReceiver = await deployContract('INFFeeReceiver', 'contracts/INFFeeReceiver.sol:INFFeeReceiver', []);
     await sleep(10_000);
 
@@ -73,8 +74,8 @@ async function main() {
     const LunarVolumeTracker = await deployContract('VolumeTracker', 'contracts/LunarVolumeTracker.sol:LunarVolumeTracker', [LunarDatabase.address])
     await sleep(5_000);
 
-    const LiquidityLocker = await deployContract('LiquidityLocker', 'contracts/LiquidityLocker.sol:LiquidityLocker', []);
-    await sleep(5_000);
+    // const LiquidityLocker = await deployContract('LiquidityLocker', 'contracts/LiquidityLocker.sol:LiquidityLocker', []);
+    // await sleep(5_000);
     
     const LiquidityAdder = await deployContract('LiquidityAdder', 'contracts/LiquidityAdder.sol:LiquidityAdder', [LunarDatabase.address]);
     await sleep(5_000);
@@ -97,7 +98,7 @@ async function main() {
     await verify(SupplyFetcher.address, [], 'contracts/SupplyFetcher.sol:SupplyFetcher');
     await verify(FeeReceiver.address, [INFFeeReceiver.address, LunarDatabase.address], 'contracts/FeeReceiver.sol:FeeReceiver');
     await verify(LunarDatabase.address, [], 'contracts/LunarDatabase.sol:LunarDatabase');
-    await verify(LiquidityLocker.address, [], 'contracts/LiquidityLocker.sol:LiquidityLocker')
+    // await verify(LiquidityLocker.address, [], 'contracts/LiquidityLocker.sol:LiquidityLocker')
     await verify(LiquidityAdder.address, [LunarDatabase.address], 'contracts/LiquidityAdder.sol:LiquidityAdder')
     await verify(LunarGenerator.address, [LunarDatabase.address], 'contracts/LunarGenerator.sol:LunarGenerator')
     await verify(LunarPumpToken.address, [], 'contracts/LunarPumpToken.sol:LunarPumpToken')
@@ -125,9 +126,9 @@ async function main() {
     console.log('Set LiquidityAdder');
 
     // set LiquidityPermaLocker
-    await LunarDatabase.setLiquidityPermaLocker(LiquidityLocker.address, { nonce: getNonce() });
-    await sleep(5000);
-    console.log('Set LiquidityLocker');
+    // await LunarDatabase.setLiquidityPermaLocker(LiquidityLocker.address, { nonce: getNonce() });
+    // await sleep(5000);
+    // console.log('Set LiquidityLocker');
 
     // set setLunarVolumeTracker
     await LunarDatabase.setLunarVolumeTracker(LunarVolumeTracker.address, { nonce: getNonce() });
