@@ -64,6 +64,9 @@ async function main() {
     // await sleep(10000);
     // await verify(Bacarrat.address, BaccaratArgs, 'contracts/Baccarat/Baccarat.sol:Baccarat');
 
+    const INFFeeReceiver = await deployContract('INFFeeReceiver', 'contracts/INFFeeReceiver.sol:INFFeeReceiver', []);
+    await sleep(10_000);
+
     const LunarDatabase = await deployContract('LunarDatabase', 'contracts/LunarDatabase.sol:LunarDatabase', []);
     await sleep(10_000);
 
@@ -85,14 +88,14 @@ async function main() {
     const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
     await sleep(10_000);
 
-    const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', [owner.address]);
+    const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', [INFFeeReceiver.address, LunarDatabase.address]);
     await sleep(10_000);
 
     const SupplyFetcher = await deployContract('SupplyFetcher', 'contracts/SupplyFetcher.sol:SupplyFetcher', []);
     await sleep(10_000);
 
     await verify(SupplyFetcher.address, [], 'contracts/SupplyFetcher.sol:SupplyFetcher');
-    await verify(FeeReceiver.address, [owner.address], 'contracts/FeeReceiver.sol:FeeReceiver');
+    await verify(FeeReceiver.address, [INFFeeReceiver.address, LunarDatabase.address], 'contracts/FeeReceiver.sol:FeeReceiver');
     await verify(LunarDatabase.address, [], 'contracts/LunarDatabase.sol:LunarDatabase');
     await verify(LiquidityLocker.address, [], 'contracts/LiquidityLocker.sol:LiquidityLocker')
     await verify(LiquidityAdder.address, [LunarDatabase.address], 'contracts/LiquidityAdder.sol:LiquidityAdder')
@@ -100,6 +103,7 @@ async function main() {
     await verify(LunarPumpToken.address, [], 'contracts/LunarPumpToken.sol:LunarPumpToken')
     await verify(LunarVolumeTracker.address, [LunarDatabase.address], 'contracts/LunarVolumeTracker.sol:LunarVolumeTracker')
     await verify(BondingCurve.address, [], 'contracts/BondingCurve.sol:BondingCurve')
+    await verify(INFFeeReceiver.address, [], 'contracts/INFFeeReceiver.sol:INFFeeReceiver');
 
     // set master copies
     await LunarDatabase.setLunarPumpBondingCurveMasterCopy(BondingCurve.address, { nonce: getNonce() });
