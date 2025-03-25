@@ -33,5 +33,8 @@ contract FeeReceiver is IFeeRecipient {
         require(s, 'Failure To Send Fee');
     }
 
-    receive() external payable {}
+    receive() external payable {
+        (bool s,) = payable(recipient).call{value: address(this).balance}("");
+        require(s, 'Failure To Send Fee');
+    }
 }

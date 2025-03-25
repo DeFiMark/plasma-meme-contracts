@@ -5,14 +5,14 @@ let secret = require("./secret");
 module.exports = {
   networks: {
     hardhat: {
-      chainId: 97//137//8453//137//8453//56
+      chainId: 56//137//8453//137//8453//56
     },
     bscTestnet: {
       url: 'https://data-seed-prebsc-2-s1.binance.org:8545/',
       accounts: [secret.key]
     },
     bscMainnet: {
-      url: 'https://bsc-dataseed.binance.org',
+      url: 'https://bnb-mainnet.g.alchemy.com/v2/BI5XlYByNdQfh3hcluwetuwR9KzTSn01',
       accounts: [secret.key]
     },
     polygonTestnet: {
@@ -25,7 +25,7 @@ module.exports = {
       // chainId: 137
     },
     baseMainnet: {
-      url: 'https://base-mainnet.g.alchemy.com/v2/9n9o547BVMuviF7PFSIYoxSt35dJtdCD',
+      url: 'https://base-mainnet.g.alchemy.com/v2/BI5XlYByNdQfh3hcluwetuwR9KzTSn01',
       accounts: [secret.key]
     }
   },
