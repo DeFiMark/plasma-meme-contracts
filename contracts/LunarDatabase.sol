@@ -68,6 +68,9 @@ contract LunarDatabase is IDatabase, Ownable {
     // Lits of all pre-bonded projects
     EnumerableSet.UintSet private preBondedProjects;
 
+    // Pauses all new launches
+    bool public paused;
+
     // Event emitted when project is created
     event NewTokenCreated(address indexed dev, address token, address bondingCurve, uint nonce, bytes projectData);
     event Bonded(address token);
@@ -83,6 +86,13 @@ contract LunarDatabase is IDatabase, Ownable {
      */
     function setLunarPumpTokenMasterCopy(address _lunarPumpTokenMasterCopy) external onlyOwner {
         lunarPumpTokenMasterCopy = _lunarPumpTokenMasterCopy;
+    }
+
+    /**
+        Sets Paused
+     */
+    function setPaused(bool _paused) external onlyOwner {
+        paused = _paused;
     }
 
     /**
@@ -169,6 +179,10 @@ contract LunarDatabase is IDatabase, Ownable {
         bytes calldata tokenPayload,
         bytes calldata bondingCurvePayload
     ) external payable returns (uint256) {
+        require(
+            !paused,
+            'Paused'
+        );
         // ensure fees are taken
         require(
             msg.value >= launchFee,
