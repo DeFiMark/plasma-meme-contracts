@@ -25,10 +25,10 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
     uint256 public tokenSlippage = 92;
 
     // DEX Info
-    address public dex = 0x10ED43C718714eb63d5aA57B78B54704E256024E;
-    address public factory = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73;
-    address public WETH = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
-    bytes32 public INIT_CODE_PAIR_HASH = 0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5;
+    address public dex = 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24;
+    address public factory = 0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6;
+    address public WETH = 0x4200000000000000000000000000000000000006;
+    bytes32 public INIT_CODE_PAIR_HASH = 0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f;
 
     // Whether or not dust is enforced
     bool public enforceDust;

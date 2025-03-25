@@ -76,7 +76,7 @@ contract LunarDatabase is IDatabase, Ownable {
     event Bonded(address token);
 
     constructor() {
-        launchFee = 0.01 ether;
+        launchFee = 0.0025 ether;
         feeRecipient = msg.sender;
         liquidityPermaLocker = 0x000000000000000000000000000000000000dEaD;
     }
