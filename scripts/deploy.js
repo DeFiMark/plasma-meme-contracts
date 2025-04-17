@@ -91,7 +91,7 @@ async function main() {
     await sleep(10_000);
 
     const SupplyFetcher = await deployContract('SupplyFetcher', 'contracts/SupplyFetcher.sol:SupplyFetcher', []);
-    await sleep(10_000);
+    await sleep(20_000);
 
     // const INFFeeReceiver = await fetchContract('contracts/INFFeeReceiver.sol:INFFeeReceiver', '0x7a190a6E591589A59fD3dF92C14cc5c6b0903AAC');
     // await sleep(5_000);

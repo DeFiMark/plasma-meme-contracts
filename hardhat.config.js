@@ -5,7 +5,7 @@ let secret = require("./secret");
 module.exports = {
   networks: {
     hardhat: {
-      chainId: 8453//137//8453//137//8453//56
+      chainId: 56//56//8453//137//8453//137//8453//56
     },
     bscTestnet: {
       url: 'https://data-seed-prebsc-2-s1.binance.org:8545/',
@@ -28,10 +28,15 @@ module.exports = {
       url: 'https://base-mainnet.g.alchemy.com/v2/BI5XlYByNdQfh3hcluwetuwR9KzTSn01',
       accounts: [secret.key],
       chainId: 8453
+    },
+    infinaeonMainnet: {
+      url: 'https://rpc.infinaeon.com/',
+      accounts: [secret.key],
+      chainId: 420000
     }
   },
   etherscan: {
-    apiKey: secret.basescanAPI,//polygonAPI,//basescanAPI,//polygonAPI//bscscanAPI
+    apiKey: secret.bscscanAPI,//polygonAPI,//basescanAPI,//polygonAPI//bscscanAPI
     customChains: [
       {
         network: "base",
@@ -41,6 +46,14 @@ module.exports = {
           browserURL: "https://basescan.org/"
         }
       }
+      // {
+      //   network: "infinaeon",
+      //   chainId: 420000,
+      //   urls: {
+      //     apiURL: "https://explorer.infinaeon.com/api",
+      //     browserURL: "https://explorer.infinaeon.com/"
+      //   }
+      // }
     ]
   },
   solidity: {

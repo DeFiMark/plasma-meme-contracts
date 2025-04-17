@@ -61,8 +61,8 @@ async function main() {
     console.log('Account nonce: ', baseNonce);
 
     // const LunarDatabase = await deployContract('LunarDatabase', 'contracts/LunarDatabase.sol:LunarDatabase', []);
-    const LunarDatabase = await fetchContract('contracts/LunarDatabase.sol:LunarDatabase', '0xc48556Da0E6a7af9b175e907c7Be8e8CB6070e3D');
-    await sleep(5_000);
+    // const LunarDatabase = await fetchContract('contracts/LunarDatabase.sol:LunarDatabase', '0xc48556Da0E6a7af9b175e907c7Be8e8CB6070e3D');
+    // await sleep(5_000);
 
 
     // const SupplyFetcher = await deployContract('SupplyFetcher', 'contracts/SupplyFetcher.sol:SupplyFetcher', []);
@@ -70,25 +70,39 @@ async function main() {
 
     // await verify(SupplyFetcher.address, [], 'contracts/SupplyFetcher.sol:SupplyFetcher');
 
-    // const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', [owner.address]);
-    // await sleep(10_000);
-
-    // await verify(FeeReceiver.address, [owner.address], 'contracts/FeeReceiver.sol:FeeReceiver');
-
     // await LunarDatabase.setFeeRecipient(FeeReceiver.address, { nonce: getNonce() });
     // console.log('Set Fee receiver');
 
+    const LunarDatabase = await fetchContract('contracts/LunarDatabase.sol:LunarDatabase', '0x0c073F76B8e4a8FF8D338258e22De4Af8E0c194F');
+    await sleep(5_000);
 
-
-    const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
+    const INFFeeReceiver = await deployContract('INFFeeReceiver', 'contracts/INFFeeReceiver.sol:INFFeeReceiver', []);
     await sleep(10_000);
 
-    await verify(BondingCurve.address, [], 'contracts/BondingCurve.sol:BondingCurve');
+    const feeArgs = [
+      INFFeeReceiver.address,
+      LunarDatabase.address
+    ]
+
+    const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', feeArgs);
+    await sleep(12_000);
+
+    await LunarDatabase.setFeeRecipient(FeeReceiver.address, { nonce: getNonce() });
+    await sleep(5000);
+    console.log('Set Fee receiver');
+
+    await verify(FeeReceiver.address, feeArgs, 'contracts/FeeReceiver.sol:FeeReceiver');
+    await verify(INFFeeReceiver.address, [], 'contracts/INFFeeReceiver.sol:INFFeeReceiver');
+
+    // const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
+    // await sleep(5_000);
+
+    // await verify(BondingCurve.address, [], 'contracts/BondingCurve.sol:BondingCurve');
 
     // set master copies
-    await LunarDatabase.setLunarPumpBondingCurveMasterCopy(BondingCurve.address, { nonce: getNonce() });
-    await sleep(5000);
-    console.log('Set Bonding Curve Master Copy');
+    // await LunarDatabase.setLunarPumpBondingCurveMasterCopy(BondingCurve.address, { nonce: getNonce() });
+    // await sleep(5000);
+    // console.log('Set Bonding Curve Master Copy');
 
 }
 
