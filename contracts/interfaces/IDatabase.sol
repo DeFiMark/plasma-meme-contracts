@@ -11,4 +11,5 @@ interface IDatabase {
     function getFeeRecipient() external view returns (address);
     function bondProject() external;
     function registerVolume(address user, uint256 amount) external;
+    function getLunarPumpGenerator() external view returns (address);
 }

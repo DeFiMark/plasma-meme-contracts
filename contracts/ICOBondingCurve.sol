@@ -7,7 +7,7 @@ pragma solidity 0.8.28;
     To add Tokens and Liquidity into the desired DEX
  */
 
-import "./interfaces/IBondingCurve.sol";
+import "./interfaces/IICOBondingCurve.sol";
 import "./interfaces/ILunarPumpToken.sol";
 import "./interfaces/ILiquidityAdder.sol";
 import "./interfaces/IFeeRecipient.sol";
@@ -19,6 +19,10 @@ contract BondingCurveData {
     uint32 internal versionNo;
     address internal token;
     address internal liquidityAdder;
+
+    address internal icoManager;
+
+    bool public isICOActive;
 
     bool internal bonded;
     uint256 public constant BONDING_TARGET = 800_000_000 * 10**18;
@@ -61,16 +65,16 @@ contract BondingCurveData {
     EnumerableSet.AddressSet internal holders;
 
     // Buy Event
+    event ICOBuy(uint256 quantityETH, uint256 quantityTokens);
     event Buy(address indexed user, uint256 quantityETH, uint256 quantityTokens);
     event Sell(address indexed user, uint256 quantityETH, uint256 quantityTokens);
 }
 
-// NOTE: ADD FAIL SAFE IN CASE OF UNFORSEEN EVENT -- WORST CASE IS FUNDS ARE LOCKED!!!
-contract BondingCurve is BondingCurveData, IBondingCurve {
+contract BondingCurve is BondingCurveData, IICOBondingCurve {
 
     using PRBMathUD60x18 for uint256;
 
-    function __init__(bytes calldata payload, address token_, address liquidityAdder_) external override {
+    function __init__(bytes calldata payload, address token_, address liquidityAdder_, address icoManager_) external override {
         require(token == address(0), 'Already Initialized');
         require(token_ != address(0), 'Zero Address');
         (
@@ -82,7 +86,104 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         bonded = false;
         bondingSupply = 0;
         tradeFee = 20; // 2%
+        icoManager = icoManager_;
+        isICOActive = true;
     }
+
+
+    function startTrading() external override payable returns (uint256) {
+        require(msg.sender == icoManager, 'Not ICO Manager');
+        require(isICOActive, 'ICO Not Active');
+        require(!bonded, 'Already Bonded');
+
+        // turn off ICO
+        isICOActive = false;
+
+        // if no value sent, return
+        if (msg.value == 0) {
+            return 0;
+        }
+
+        // buy tokens for ICO
+        // determine eth in value from trade fee
+        uint256 ethIn = _takeICOFee(msg.value);
+
+        // Determine the desired ΔS (in 1e18 scale) from the ETH sent.
+        tokensBought = solveIntegralBuy(bondingSupply, ethIn);
+
+        // Determine the remaining tokens available.
+        uint256 remainingTokens = BONDING_TARGET - bondingSupply;
+
+        // If the desired purchase exceeds the remaining supply,
+        // clamp tokensBought to the remaining amount.
+        if (tokensBought > remainingTokens) {
+
+            // Update the tokens bought to the remaining amount.
+            tokensBought = remainingTokens;
+
+            // Compute the actual cost (in 1e18 scale) for tokensBought using the forward integral:
+            // costForward = (a/b) * (e^(b*(S + ΔS)) - e^(b*S))
+            uint256 actualCostScaled = costForward(bondingSupply, tokensBought);
+
+            // Ensure that the user sent at least the actual cost.
+            require(ethIn >= actualCostScaled, "Not enough ETH sent");
+
+            // Update state: add the tokens bought.
+            unchecked {
+                bondingSupply += tokensBought;
+            }
+
+            // Mint tokens to the buyer.
+            _mint(icoManager, tokensBought);
+
+            // Refund any ETH not used in the purchase.
+            uint256 refund = ethIn - actualCostScaled;
+
+            // bond the contract, sending necessary funds to fee receiver and dex
+            _bond(address(this).balance - refund);
+            
+            // Refund any excess ETH
+            if (refund > 0) {
+                // take fee
+                IFeeRecipient(ILiquidityAdder(liquidityAdder).getFeeRecipient()).takeVolumeFee{value: refund}(token);
+            }
+
+        } else {
+
+            // Update state: add the tokens bought.
+            unchecked {
+                bondingSupply += tokensBought;
+            }
+
+            // Mint tokens to the buyer.
+            _mint(icoManager, tokensBought);
+
+            // see if bonded
+            if (bondingSupply >= BONDING_TARGET) {
+                _bond(address(this).balance);
+            }
+        }
+
+        // emit event
+        emit ICOBuy(ethIn, tokensBought);
+
+        // log trade
+        trades[tradeNonce] = Trade({
+            maker: icoManager,
+            ethAmount: int256(ethIn) * int256(-1),
+            tokenAmount: int256(tokensBought),
+            currentSupply: bondingSupply, 
+            timestamp: block.timestamp
+        });
+
+        // increment trade nonce
+        unchecked {
+            ++tradeNonce;
+        }
+
+        return tokensBought;
+    }
+
 
     // --------------------------------------------------------------------------------
     // Public BUY: user sends ETH => get newly minted tokens
@@ -98,6 +199,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         require(msg.value > 0, "No ETH sent");
         require(bondingSupply < BONDING_TARGET, "Bonding curve is full");
         require(!bonded, "Bonding curve is bonded");
+        require(isICOActive == false, "ICO is still active");
 
         // determine eth in value from trade fee
         uint256 ethIn = _takeFee(recipient, msg.value);
@@ -195,6 +297,8 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     function sellTokens(uint256 tokenAmount) external returns (uint256 ethOutWei) {
         require(tokenAmount > 0, "No tokens to sell");
         require(balanceOf(msg.sender) >= tokenAmount, "Not enough tokens");
+        require(!bonded, "Bonding curve is bonded");
+        require(isICOActive == false, "ICO is still active");
 
         // Cap at how many the user can actually sell from the curve standpoint
         require(tokenAmount <= bondingSupply, "Too many tokens sold?");
@@ -408,7 +512,6 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
             EnumerableSet.add(holders, to);
         }
 
-        // transfer tokens
         ILunarPumpToken(token).transfer(to, amount);
 
         // if this wallet has more than the max per wallet, revert
@@ -453,6 +556,25 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
 
         // log value
         IDatabase(ILiquidityAdder(liquidityAdder).getDatabase()).registerVolume(user, amount);
+
+        // track our own volume
+        unchecked {
+            totalVolume += amount;
+        }
+
+        // return amount less fees
+        return amount - fee;
+    }
+
+    function _takeICOFee(uint256 amount) internal returns (uint256) {
+
+        // split fee
+        uint256 fee = ( amount * tradeFee ) / 1000;
+
+        // take fee
+        if (fee > 0) {
+            IFeeRecipient(ILiquidityAdder(liquidityAdder).getFeeRecipient()).takeVolumeFee{value: fee}(token);
+        }
 
         // track our own volume
         unchecked {
@@ -516,7 +638,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         * @return bool if the account is allowed to transfer tokens, limited to bonding curve and liquidity adder
      */
     function allowEarlyTransfer(address account) external view returns (bool) {
-        return account == address(this) || account == liquidityAdder;
+        return account == address(this) || account == liquidityAdder || account == icoManager;
     }
 
     function getVersionNo() external view override returns (uint32) {

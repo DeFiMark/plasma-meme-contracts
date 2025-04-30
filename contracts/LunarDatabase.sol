@@ -254,7 +254,7 @@ contract LunarDatabase is IDatabase, Ownable {
         return lunarPumpBondingCurveMasterCopy;
     }
 
-    function getLunarPumpGenerator() external view returns (address) {
+    function getLunarPumpGenerator() external view override returns (address) {
         return lunarPumpGenerator;
     }
 
