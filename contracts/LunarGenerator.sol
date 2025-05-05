@@ -51,7 +51,6 @@ contract LunarGenerator is ILunarGenerator {
             uint256 maxAmountPerWallet, 
             uint256 duration,
             address[] memory whitelistedAddresses, 
-            uint256[] memory whitelistedAmounts
         ) = abi.decode(icoPayload, (uint256, uint256, address[], uint256[]));
 
         // determine which bonding curve we are using - ICO or normal bonding curve

@@ -44,7 +44,7 @@ contract ICOManager is IICOManager, Ownable {
     }
 
     // maps a token to an ICO
-    mapping( address => ICO ) public icos;
+    mapping( address => ICO ) private icos;
 
     event ICOStarted(address indexed token, uint256 startTime, uint256 endTime);
 
@@ -203,7 +203,7 @@ contract ICOManager is IICOManager, Ownable {
         icos[token].endTime = block.timestamp + duration;
         icos[token].isComplete = false;
 
-        emit ICOStarted(token, startTime, endTime);
+        emit ICOStarted(token, block.timestamp, block.timestamp + duration);
     }
 
     function remainingTime(address token) external view override returns (uint256) {
@@ -232,22 +232,22 @@ contract ICOManager is IICOManager, Ownable {
 
     function listContributorsAndContributions(address token) external view returns (address[] memory, uint256[] memory) {
         uint256 len = icos[token].status.contributors.length;
-        uint256[] memory contributions = new uint256[](len);
+        uint256[] memory contributions_ = new uint256[](len);
         for (uint i = 0; i < len;) {
-            contributions[i] = icos[token].status.contributions[icos[token].status.contributors[i]];
+            contributions_[i] = icos[token].status.contributions[icos[token].status.contributors[i]];
             unchecked { ++i; }
         }
-        return (icos[token].status.contributors, contributions);
+        return (icos[token].status.contributors, contributions_);
     }
 
     function getICOStatus(address token) external view returns (uint256, uint256, address[] memory, uint256[] memory) {
         uint256 len = icos[token].status.contributors.length;
-        uint256[] memory contributions = new uint256[](len);
+        uint256[] memory contributions_ = new uint256[](len);
         for (uint i = 0; i < len;) {
-            contributions[i] = icos[token].status.contributions[icos[token].status.contributors[i]];
+            contributions_[i] = icos[token].status.contributions[icos[token].status.contributors[i]];
             unchecked { ++i; }
         }
-        return (icos[token].status.totalRaised, icos[token].status.totalTokensReceived, icos[token].status.contributors, contributions);
+        return (icos[token].status.totalRaised, icos[token].status.totalTokensReceived, icos[token].status.contributors, contributions_);
     }
 
     function getICOConfig(address token) external view returns (address[] memory, uint256[] memory, uint256) {
@@ -273,12 +273,12 @@ contract ICOManager is IICOManager, Ownable {
         uint256 totalRaised,
         uint256 totalTokensReceived,
         address[] memory contributors,
-        uint256[] memory contributions
+        uint256[] memory contributions_
     ) {
         uint256 len = icos[token].status.contributors.length;
-        uint256[] memory contributions = new uint256[](len);
+        contributions_ = new uint256[](len);
         for (uint i = 0; i < len;) {
-            contributions[i] = icos[token].status.contributions[icos[token].status.contributors[i]];
+            contributions_[i] = icos[token].status.contributions[icos[token].status.contributors[i]];
             unchecked { ++i; }
         }
         return (
@@ -288,7 +288,7 @@ contract ICOManager is IICOManager, Ownable {
             icos[token].status.totalRaised, 
             icos[token].status.totalTokensReceived, 
             icos[token].status.contributors, 
-            contributions
+            contributions_
         );
     }
     
@@ -301,7 +301,7 @@ contract ICOManager is IICOManager, Ownable {
     }
 
     function isPrivateICO(address token) public view returns (bool) {
-        return icos[token].config.whitelistedAddresses.length > 0;
+        return EnumerableSet.length(icos[token].config.whitelistedAddresses) > 0;
     }
 
 }

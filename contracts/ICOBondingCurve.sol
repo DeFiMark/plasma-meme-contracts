@@ -91,7 +91,7 @@ contract BondingCurve is BondingCurveData, IICOBondingCurve {
     }
 
 
-    function startTrading() external override payable returns (uint256) {
+    function startTrading() external override payable returns (uint256 tokensBought) {
         require(msg.sender == icoManager, 'Not ICO Manager');
         require(isICOActive, 'ICO Not Active');
         require(!bonded, 'Already Bonded');
