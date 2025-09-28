@@ -61,14 +61,11 @@ async function main() {
     console.log('Account nonce: ', baseNonce);
 
     // Deploy Database first (no constructor parameters)
-    const HigherDatabase = await deployContract('HigherDatabase', 'contracts/Database.sol:HigherDatabase', []);
-    await sleep(10_000);
+    // const HigherDatabase = await deployContract('HigherDatabase', 'contracts/Database.sol:HigherDatabase', []);
+    // await sleep(10_000);
 
-    await verify(HigherDatabase.address, [], 'contracts/Database.sol:HigherDatabase');
-
-    if (true) {
-      return;
-    }
+    const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x5ad45DCFC2049362eB62321265248e6D6053b5D9');
+    await sleep(5_000);
 
     // Deploy Volume Tracker (requires database address)
     const HigherVolumeTracker = await deployContract('HigherVolumeTracker', 'contracts/HigherVolumeTracker.sol:HigherVolumeTracker', [HigherDatabase.address]);
@@ -112,6 +109,7 @@ async function main() {
     await sleep(5_000);
 
     // Verify all deployed contracts
+    // await verify(HigherDatabase.address, [], 'contracts/Database.sol:HigherDatabase');
     await verify(SupplyFetcher.address, [], 'contracts/SupplyFetcher.sol:SupplyFetcher');
     await verify(FeeReceiver.address, [owner.address, owner.address, owner.address, HigherDatabase.address], 'contracts/FeeReceiver.sol:FeeReceiver');
     await verify(HigherDatabase.address, [], 'contracts/Database.sol:HigherDatabase');

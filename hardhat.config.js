@@ -14,7 +14,9 @@ module.exports = {
     },
   },
   etherscan: {
-    apiKey: secret.bscscanAPI,//polygonAPI,//basescanAPI,//polygonAPI//bscscanAPI
+    apiKey: {
+      plasma: 'plasma',
+    },
     customChains: [
       {
         network: "plasma",
