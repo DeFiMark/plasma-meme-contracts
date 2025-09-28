@@ -22,6 +22,8 @@ interface IWETH {
     function transfer(address to, uint value) external returns (bool);
 }
 
+import "./lib/TransferHelper.sol";
+
 contract FeeReceiver is IFeeRecipient {
 
     address public immutable database;
@@ -44,17 +46,11 @@ contract FeeReceiver is IFeeRecipient {
     }
 
     function takeBondFee(address token) external payable override {
-        (uint256 devFee, uint256 platformFee) = splitFees(address(this).balance);
-        IDatabase(database).addDevFee{value: devFee}(IDatabase(database).getProjectDev(token));
-        (bool s1,) = payable(recipient).call{value: platformFee}("");
-        require(s1, 'Failure To Send Fee To Platform');
+        splitFees(address(this).balance, IDatabase(database).getProjectDev(token));
     }
 
     function takeVolumeFee(address token) external payable override {
-        (uint256 devFee, uint256 platformFee) = splitFees(address(this).balance);
-        IDatabase(database).addDevFee{value: devFee}(IDatabase(database).getProjectDev(token));
-        (bool s1,) = payable(recipient).call{value: platformFee}("");
-        require(s1, 'Failure To Send Fee To Platform');
+        splitFees(address(this).balance, IDatabase(database).getProjectDev(token));
     }
     
     function takeRouterFee(address pair, address user) external override payable returns (address token) {
@@ -70,10 +66,7 @@ contract FeeReceiver is IFeeRecipient {
         address dev = IDatabase(database).getProjectDev(token);
 
         // split fees    
-        (uint256 devFee, uint256 platformFee) = splitFees(address(this).balance);
-        IDatabase(database).addDevFee{value: devFee}(dev);
-        (bool s1,) = payable(recipient).call{value: platformFee}("");
-        require(s1, 'Failure To Send Fee To Platform');
+        splitFees(address(this).balance, dev);
     }
 
     function splitFees(uint256 amount, address dev) internal {

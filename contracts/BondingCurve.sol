@@ -8,7 +8,7 @@ pragma solidity 0.8.28;
  */
 
 import "./interfaces/IBondingCurve.sol";
-import "./interfaces/IHigherToken.sol";
+import "./interfaces/IHigherPumpToken.sol";
 import "./interfaces/ILiquidityAdder.sol";
 import "./interfaces/IFeeRecipient.sol";
 import "./interfaces/IDatabase.sol";
@@ -404,26 +404,26 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     }
 
     function _mint(address to, uint256 amount) internal {
-        if (IHigherToken(token).balanceOf(to) == 0 && amount > 0) {
+        if (IHigherPumpToken(token).balanceOf(to) == 0 && amount > 0) {
             EnumerableSet.add(holders, to);
         }
 
         // transfer tokens
-        IHigherToken(token).transfer(to, amount);
+        IHigherPumpToken(token).transfer(to, amount);
 
         // if this wallet has more than the max per wallet, revert
         if (maxSupplyPerWallet > 0) {
             require(
-                IHigherToken(token).balanceOf(to) <= maxSupplyPerWallet,
+                IHigherPumpToken(token).balanceOf(to) <= maxSupplyPerWallet,
                 "Max Supply Per Wallet Exceeded"
             );
         }
     }
 
     function _burn(address from, uint256 amount) internal {
-        IHigherToken(token).bondingCurveTransferFrom(from, address(this), amount);
+        IHigherPumpToken(token).bondingCurveTransferFrom(from, address(this), amount);
 
-        if (IHigherToken(token).balanceOf(from) == 0 && EnumerableSet.contains(holders, from)) {
+        if (IHigherPumpToken(token).balanceOf(from) == 0 && EnumerableSet.contains(holders, from)) {
             EnumerableSet.remove(holders, from);
         }
     }
@@ -507,7 +507,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     }
 
     function balanceOf(address user) public view returns (uint256) {
-        return IHigherToken(token).balanceOf(user);
+        return IHigherPumpToken(token).balanceOf(user);
     }
 
     /**
@@ -560,7 +560,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         for (uint i = startIndex; i < endIndex;) {
             address holder = EnumerableSet.at(holders, i);
             _holders[i - startIndex] = holder;
-            balances[i - startIndex] = IHigherToken(token).balanceOf(holder);
+            balances[i - startIndex] = IHigherPumpToken(token).balanceOf(holder);
             unchecked { ++i; }
         }
         return ( _holders, balances );
@@ -570,7 +570,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         uint256 length = EnumerableSet.length(holders);
         uint256[] memory balances = new uint256[](length);
         for (uint i = 0; i < length;) {
-            balances[i] = IHigherToken(token).balanceOf(EnumerableSet.at(holders, i));
+            balances[i] = IHigherPumpToken(token).balanceOf(EnumerableSet.at(holders, i));
             unchecked { ++i; }
         }
         return ( EnumerableSet.values(holders), balances );

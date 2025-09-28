@@ -59,71 +59,122 @@ async function main() {
     baseNonce = await ethers.provider.getTransactionCount(owner.address);
     nonceOffset = 0;
     console.log('Account nonce: ', baseNonce);
-    
-    const INFFeeReceiver = await deployContract('INFFeeReceiver', 'contracts/INFFeeReceiver.sol:INFFeeReceiver', []);
+
+    // Deploy Database first (no constructor parameters)
+    const HigherDatabase = await deployContract('HigherDatabase', 'contracts/Database.sol:HigherDatabase', []);
     await sleep(10_000);
 
-    const LunarDatabase = await deployContract('LunarDatabase', 'contracts/LunarDatabase.sol:LunarDatabase', []);
-    await sleep(10_000);
+    await verify(HigherDatabase.address, [], 'contracts/Database.sol:HigherDatabase');
 
-    const LunarVolumeTracker = await deployContract('VolumeTracker', 'contracts/LunarVolumeTracker.sol:LunarVolumeTracker', [LunarDatabase.address])
+    if (true) {
+      return;
+    }
+
+    // Deploy Volume Tracker (requires database address)
+    const HigherVolumeTracker = await deployContract('HigherVolumeTracker', 'contracts/HigherVolumeTracker.sol:HigherVolumeTracker', [HigherDatabase.address]);
     await sleep(5_000);
     
-    const LiquidityAdder = await deployContract('LiquidityAdder', 'contracts/LiquidityAdder.sol:LiquidityAdder', [LunarDatabase.address]);
+    // Deploy Factory (requires database address)
+    const HigherFactory = await deployContract('HigherFactory', 'contracts/Factory.sol:HigherFactory', [HigherDatabase.address]);
+    await sleep(10_000);
+
+    // get INIT_CODE_PAIR_HASH from factory
+    const INIT_CODE_PAIR_HASH = await HigherFactory.INIT_CODE_PAIR_HASH();
+    await sleep(5000);
+    console.log('INIT_CODE_PAIR_HASH: ', INIT_CODE_PAIR_HASH);
+
+    // Deploy Router (requires factory and database addresses)
+    const HigherRouter = await deployContract('HigherRouter', 'contracts/Router.sol:HigherRouter', [HigherFactory.address, HigherDatabase.address]);
     await sleep(5_000);
 
-    const LunarGenerator = await deployContract('LunarGenerator', 'contracts/LunarGenerator.sol:LunarGenerator', [LunarDatabase.address]);
+    // Deploy Higher Generator (requires database)
+    const HigherGenerator = await deployContract('HigherGenerator', 'contracts/HigherGenerator.sol:HigherGenerator', [HigherDatabase.address]);
     await sleep(5_000);
 
-    const LunarPumpToken = await deployContract('LunarPumpToken', 'contracts/LunarPumpToken.sol:LunarPumpToken', []);
+    // Deploy Higher Token Master Copy (no constructor parameters)
+    const HigherTokenImp = await deployContract('HigherTokenImp', 'contracts/HigherTokenImp.sol:HigherPumpToken', []);
     await sleep(5_000);
 
+    // Deploy Bonding Curve Master Copy (no constructor parameters)
     const BondingCurve = await deployContract('BondingCurve', 'contracts/BondingCurve.sol:BondingCurve', []);
-    await sleep(10_000);
+    await sleep(5_000);
 
-    const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', [INFFeeReceiver.address, LunarDatabase.address]);
-    await sleep(10_000);
+    // Deploy Liquidity Adder (requires database, router, factory, and INIT_CODE_PAIR_HASH)
+    const LiquidityAdder = await deployContract('LiquidityAdder', 'contracts/LiquidityAdder.sol:LiquidityAdder', [HigherDatabase.address, HigherRouter.address, HigherFactory.address, INIT_CODE_PAIR_HASH]);
+    await sleep(5_000);
 
+    // Deploy Fee Receiver (requires platform recipient, buy burn recipient, staking recipient, and database addresses)
+    const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', [owner.address, owner.address, owner.address, HigherDatabase.address]);
+    await sleep(5_000);
+
+    // Deploy Supply Fetcher (no constructor parameters)
     const SupplyFetcher = await deployContract('SupplyFetcher', 'contracts/SupplyFetcher.sol:SupplyFetcher', []);
-    await sleep(20_000);
+    await sleep(5_000);
 
+    // Verify all deployed contracts
     await verify(SupplyFetcher.address, [], 'contracts/SupplyFetcher.sol:SupplyFetcher');
-    await verify(FeeReceiver.address, [INFFeeReceiver.address, LunarDatabase.address], 'contracts/FeeReceiver.sol:FeeReceiver');
-    await verify(LunarDatabase.address, [], 'contracts/LunarDatabase.sol:LunarDatabase');
-    await verify(LiquidityAdder.address, [LunarDatabase.address], 'contracts/LiquidityAdder.sol:LiquidityAdder')
-    await verify(LunarGenerator.address, [LunarDatabase.address], 'contracts/LunarGenerator.sol:LunarGenerator')
-    await verify(LunarPumpToken.address, [], 'contracts/LunarPumpToken.sol:LunarPumpToken')
-    await verify(LunarVolumeTracker.address, [LunarDatabase.address], 'contracts/LunarVolumeTracker.sol:LunarVolumeTracker')
-    await verify(BondingCurve.address, [], 'contracts/BondingCurve.sol:BondingCurve')
-    await verify(INFFeeReceiver.address, [], 'contracts/INFFeeReceiver.sol:INFFeeReceiver');
+    await verify(FeeReceiver.address, [owner.address, owner.address, owner.address, HigherDatabase.address], 'contracts/FeeReceiver.sol:FeeReceiver');
+    await verify(HigherDatabase.address, [], 'contracts/Database.sol:HigherDatabase');
+    await verify(LiquidityAdder.address, [HigherDatabase.address, HigherRouter.address, HigherFactory.address, INIT_CODE_PAIR_HASH], 'contracts/LiquidityAdder.sol:LiquidityAdder');
+    await verify(HigherGenerator.address, [HigherDatabase.address], 'contracts/HigherGenerator.sol:HigherGenerator');
+    await verify(HigherTokenImp.address, [], 'contracts/HigherTokenImp.sol:HigherPumpToken');
+    await verify(HigherVolumeTracker.address, [HigherDatabase.address], 'contracts/HigherVolumeTracker.sol:HigherVolumeTracker');
+    await verify(BondingCurve.address, [], 'contracts/BondingCurve.sol:BondingCurve');
+    await verify(HigherRouter.address, [HigherFactory.address, HigherDatabase.address], 'contracts/Router.sol:HigherRouter');
+    await verify(HigherFactory.address, [HigherDatabase.address], 'contracts/Factory.sol:HigherFactory');
 
-    // set master copies
-    await LunarDatabase.setLunarPumpBondingCurveMasterCopy(BondingCurve.address, { nonce: getNonce() });
+    // Set master copies and configure database
+    await HigherDatabase.setHigherPumpBondingCurveMasterCopy(BondingCurve.address, { nonce: getNonce() });
     await sleep(5000);
     console.log('Set Bonding Curve Master Copy');
 
-    await LunarDatabase.setLunarPumpTokenMasterCopy(LunarPumpToken.address, { nonce: getNonce() });
+    await HigherDatabase.setHigherPumpTokenMasterCopy(HigherTokenImp.address, { nonce: getNonce() });
     await sleep(5000);
-    console.log('Set LunarPumpToken Master Copy');
+    console.log('Set HigherPumpToken Master Copy');
 
-    // set generator
-    await LunarDatabase.setLunarPumpGenerator(LunarGenerator.address, { nonce: getNonce() });
+    // Set generator
+    await HigherDatabase.setHigherPumpGenerator(HigherGenerator.address, { nonce: getNonce() });
     await sleep(5000);
-    console.log('Set LunarGenerator');
+    console.log('Set HigherGenerator');
 
-    // set LiquidityAdder
-    await LunarDatabase.setLiquidityAdder(LiquidityAdder.address, { nonce: getNonce() });
+    // Set LiquidityAdder
+    await HigherDatabase.setLiquidityAdder(LiquidityAdder.address, { nonce: getNonce() });
     await sleep(5000);
     console.log('Set LiquidityAdder');
 
-    // set setLunarVolumeTracker
-    await LunarDatabase.setLunarVolumeTracker(LunarVolumeTracker.address, { nonce: getNonce() });
+    // Set HigherVolumeTracker
+    await HigherDatabase.setHigherVolumeTracker(HigherVolumeTracker.address, { nonce: getNonce() });
     await sleep(5000);
-    console.log('Set LunarVolumeTracker');
+    console.log('Set HigherVolumeTracker');
 
-    await LunarDatabase.setFeeRecipient(FeeReceiver.address, { nonce: getNonce() });
+    // Set fee recipient
+    await HigherDatabase.setFeeRecipient(FeeReceiver.address, { nonce: getNonce() });
     await sleep(5000);
     console.log('Set Fee receiver');
+
+    // Set router in database
+    await HigherDatabase.setRouter(HigherRouter.address, { nonce: getNonce() });
+    await sleep(5000);
+    console.log('Set Router');
+
+    // white list router and factory for canRegisterVolume in database
+    await HigherDatabase.setCanRegisterVolume(HigherRouter.address, { nonce: getNonce() });
+    await sleep(5000);
+    console.log('White list Router for canRegisterVolume');
+
+    await HigherDatabase.setCanRegisterVolume(HigherFactory.address, { nonce: getNonce() });
+    await sleep(5000);
+    console.log('White list Factory for canRegisterVolume');
+
+    // set can create pair in factory for router
+    await HigherFactory.setCanCreatePair(HigherRouter.address, { nonce: getNonce() });
+    await sleep(5000);
+    console.log('White list Router for canCreatePair');
+
+    // set can create pair in factory for liquidity adder
+    await HigherFactory.setCanCreatePair(LiquidityAdder.address, { nonce: getNonce() });
+    await sleep(5000);
+    console.log('White list Liquidity Adder for canCreatePair');
 }
 
 main()

@@ -14,78 +14,44 @@ import "./interfaces/IBondingCurve.sol";
 import "./interfaces/IHigherPumpToken.sol";
 import "./interfaces/IHigherGenerator.sol";
 import "./interfaces/IDatabase.sol";
-import "./interfaces/IICOManager.sol";
-import "./interfaces/IICOBondingCurve.sol";
 
 contract HigherGenerator is IHigherGenerator {
 
     IDatabase public immutable database;
 
-    address public immutable icoManager;
-
-    address public immutable icoBondingCurveMasterCopy;
-
-    constructor(address _database, address _icoManager, address _icoBondingCurveMasterCopy) {
+    constructor(address _database) {
         database = IDatabase(_database);
-        icoManager = _icoManager;
-        icoBondingCurveMasterCopy = _icoBondingCurveMasterCopy;
     }
 
     /**
         Generates a token and bonding curve, initializes both and returns their addresses
      */
-    function generateProject(bytes calldata tokenPayload, bytes calldata bondingCurvePayload_, address liquidityAdder) external override returns (address token, address bondingCurve) {
-        require(msg.sender == address(database), "HigherGenerator: Only database can call this function");
-
-        // generate token
+    function generateProject(bytes calldata tokenPayload, bytes calldata bondingCurvePayload, address liquidityAdder) external override returns (address token, address bondingCurve) {
         token = generateToken();
+        bondingCurve = generateBondingCurve();
 
-        // decode the bonding curve payload to get the ICO payload and bonding curve payload
-        (
-            bytes memory icoPayload,
-            bytes memory bondingCurvePayload
-        ) = abi.decode(bondingCurvePayload_, (bytes, bytes));
+        ILunarPumpToken(token).__init__(tokenPayload, bondingCurve);
+        IBondingCurve(bondingCurve).__init__(bondingCurvePayload, token, liquidityAdder);
 
-        // decode the ICO payload to get the max amount per wallet and whitelisted addresses and amounts
-        (
-            uint256 maxAmountPerWallet, 
-            uint256 duration,
-            address[] memory whitelistedAddresses, 
-        ) = abi.decode(icoPayload, (uint256, uint256, address[], uint256[]));
-
-        // determine which bonding curve we are using - ICO or normal bonding curve
-        // if maxAmountPerWallet is 0, whitelistedAddresses is empty and duration is 0, we are using a normal bonding curve
-        if (maxAmountPerWallet == 0 && whitelistedAddresses.length == 0 && duration == 0) {
-
-            // ICO is not active, this is a normal bonding curve
-            bondingCurve = generateBondingCurve();
-            IBondingCurve(bondingCurve).__init__(bondingCurvePayload, token, liquidityAdder);
-        } else {
-
-            // ICO is active, launch ICO Bonding Curve and launch the ICO through the icoManager
-            bondingCurve = generateICOBondingCurve();
-            IICOBondingCurve(bondingCurve).__init__(bondingCurvePayload, token, liquidityAdder, icoManager);
-
-            // launch ICO through the icoManager
-            IICOManager(icoManager).launchICO(token, icoPayload);
-        }
-        
-        // initialize the token contract with the bonding curve address
-        IHigherPumpToken(token).__init__(tokenPayload, bondingCurve);
-        
         return (token, bondingCurve);
     }
 
+    /**
+        @dev Deploys and returns the address of a clone of the lunarPumpTokenMasterCopy
+        Created by DeFi Mark To Allow Clone Contract To Easily Create Clones Of Itself
+        Without redundancy
+     */
     function generateToken() internal returns(address) {
-        return _clone(database.getHigherPumpTokenMasterCopy());
+        return _clone(database.getLunarPumpTokenMasterCopy());
     }
 
+    /**
+        @dev Deploys and returns the address of a clone of the lunarPumpBondingCurveMasterCopy
+        Created by DeFi Mark To Allow Clone Contract To Easily Create Clones Of Itself
+        Without redundancy
+     */
     function generateBondingCurve() internal returns(address) {
         return _clone(database.getBondingCurveMasterCopy());
-    }
-
-    function generateICOBondingCurve() internal returns(address) {
-        return _clone(icoBondingCurveMasterCopy);
     }
 
     /**
@@ -104,5 +70,4 @@ contract HigherGenerator is IHigherGenerator {
         }
         require(instance != address(0), "ERC1167: create failed");
     }
-
 }
