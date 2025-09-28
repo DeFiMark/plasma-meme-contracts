@@ -8,7 +8,7 @@ pragma solidity 0.8.28;
  */
 
 import "./interfaces/IBondingCurve.sol";
-import "./interfaces/ILunarPumpToken.sol";
+import "./interfaces/IHigherToken.sol";
 import "./interfaces/ILiquidityAdder.sol";
 import "./interfaces/IFeeRecipient.sol";
 import "./interfaces/IDatabase.sol";
@@ -25,10 +25,10 @@ contract BondingCurveData {
     uint256 public constant TOKEN_TOTAL = 1_000_000_000 * 10**18;
 
     // aScaled = 0.000000001 * 1e18
-    uint256 public constant A_SCALED = 0.000000001 ether;
+    uint256 public constant A_SCALED = 0.000004 ether;
 
     // bScaled = 0.0000000034 * 1e18
-    uint256 public constant B_SCALED = 0.0000000034 ether;// 0.0000000034 ether;
+    uint256 public constant B_SCALED = 0.0000000028 ether;// 0.0000000034 ether;
 
     // total supply of tokens in the bonding curve
     uint256 public bondingSupply;
@@ -61,8 +61,8 @@ contract BondingCurveData {
     EnumerableSet.AddressSet internal holders;
 
     // Buy Event
-    event Buy(address indexed user, uint256 quantityETH, uint256 quantityTokens);
-    event Sell(address indexed user, uint256 quantityETH, uint256 quantityTokens);
+    event Buy(address indexed token, address indexed user, uint256 quantityETH, uint256 quantityTokens);
+    event Sell(address indexed token, address indexed user, uint256 quantityETH, uint256 quantityTokens);
 }
 
 // NOTE: ADD FAIL SAFE IN CASE OF UNFORSEEN EVENT -- WORST CASE IS FUNDS ARE LOCKED!!!
@@ -404,26 +404,26 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     }
 
     function _mint(address to, uint256 amount) internal {
-        if (ILunarPumpToken(token).balanceOf(to) == 0 && amount > 0) {
+        if (IHigherToken(token).balanceOf(to) == 0 && amount > 0) {
             EnumerableSet.add(holders, to);
         }
 
         // transfer tokens
-        ILunarPumpToken(token).transfer(to, amount);
+        IHigherToken(token).transfer(to, amount);
 
         // if this wallet has more than the max per wallet, revert
         if (maxSupplyPerWallet > 0) {
             require(
-                ILunarPumpToken(token).balanceOf(to) <= maxSupplyPerWallet,
+                IHigherToken(token).balanceOf(to) <= maxSupplyPerWallet,
                 "Max Supply Per Wallet Exceeded"
             );
         }
     }
 
     function _burn(address from, uint256 amount) internal {
-        ILunarPumpToken(token).bondingCurveTransferFrom(from, address(this), amount);
+        IHigherToken(token).bondingCurveTransferFrom(from, address(this), amount);
 
-        if (ILunarPumpToken(token).balanceOf(from) == 0 && EnumerableSet.contains(holders, from)) {
+        if (IHigherToken(token).balanceOf(from) == 0 && EnumerableSet.contains(holders, from)) {
             EnumerableSet.remove(holders, from);
         }
     }
@@ -452,7 +452,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         IFeeRecipient(ILiquidityAdder(liquidityAdder).getFeeRecipient()).takeVolumeFee{value: fee}(token);
 
         // log value
-        IDatabase(ILiquidityAdder(liquidityAdder).getDatabase()).registerVolume(user, amount);
+        IDatabase(ILiquidityAdder(liquidityAdder).getDatabase()).registerVolume(token, user, amount);
 
         // track our own volume
         unchecked {
@@ -507,7 +507,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
     }
 
     function balanceOf(address user) public view returns (uint256) {
-        return ILunarPumpToken(token).balanceOf(user);
+        return IHigherToken(token).balanceOf(user);
     }
 
     /**
@@ -560,7 +560,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         for (uint i = startIndex; i < endIndex;) {
             address holder = EnumerableSet.at(holders, i);
             _holders[i - startIndex] = holder;
-            balances[i - startIndex] = ILunarPumpToken(token).balanceOf(holder);
+            balances[i - startIndex] = IHigherToken(token).balanceOf(holder);
             unchecked { ++i; }
         }
         return ( _holders, balances );
@@ -570,7 +570,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         uint256 length = EnumerableSet.length(holders);
         uint256[] memory balances = new uint256[](length);
         for (uint i = 0; i < length;) {
-            balances[i] = ILunarPumpToken(token).balanceOf(EnumerableSet.at(holders, i));
+            balances[i] = IHigherToken(token).balanceOf(EnumerableSet.at(holders, i));
             unchecked { ++i; }
         }
         return ( EnumerableSet.values(holders), balances );

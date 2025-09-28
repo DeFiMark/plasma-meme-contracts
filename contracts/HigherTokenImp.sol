@@ -5,10 +5,10 @@ pragma solidity 0.8.28;
     Token Master Copy, all tokens will be created from this contract
  */
 
-import "./interfaces/ILunarPumpToken.sol";
+import "./interfaces/IHigherPumpToken.sol";
 import "./interfaces/IBondingCurve.sol";
 
-contract LunarPumpTokenData {
+contract HigherPumpTokenData {
 
     // total supply
     uint256 internal _totalSupply;
@@ -38,7 +38,7 @@ contract LunarPumpTokenData {
     }
 }
 
-contract LunarPumpToken is LunarPumpTokenData, ILunarPumpToken {
+contract HigherPumpToken is HigherPumpTokenData, IHigherPumpToken {
 
     function __init__(bytes calldata payload, address bondingCurve_) external override {
         require(bondingCurve == address(0), 'Already Initialized');

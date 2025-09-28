@@ -2,18 +2,18 @@
 pragma solidity 0.8.28;
 
 /**
-    Stores all relevant information on all projects deployed through Lunar Pump
+    Stores all relevant information on all projects deployed through Higher Pump
  */
 
 import "./interfaces/IDatabase.sol";
 import "./interfaces/IBondingCurve.sol";
-import "./interfaces/ILunarGenerator.sol";
-import "./interfaces/ILunarVolumeTracker.sol";
+import "./interfaces/IHigherGenerator.sol";
+import "./interfaces/IHigherVolumeTracker.sol";
 import "./lib/EnumerableSet.sol";
 import "./lib/Ownable.sol";
 import "./lib/TransferHelper.sol";
 
-contract LunarDatabase is IDatabase, Ownable {
+contract HigherDatabase is IDatabase, Ownable {
 
     // Project struct
     struct Project {
@@ -35,14 +35,26 @@ contract LunarDatabase is IDatabase, Ownable {
     // Maps an address to a list of projects they have launched
     mapping ( address => uint256[] ) public allDevProjects;
 
-    // Master copy of the LunarPumpToken
-    address internal lunarPumpTokenMasterCopy;
+    // mapping for contracts that can register volume
+    mapping ( address => bool ) public canRegisterVolume;
 
-    // Master copy of the LunarPumpBondingCurve
-    address internal lunarPumpBondingCurveMasterCopy;
+    // dev fee struct
+    struct DevFee {
+        uint256 claimedDevFees;
+        uint256 pendingDevFees;
+    }
 
-    // LunarPumpGenerator
-    address internal lunarPumpGenerator;
+    // Maps a dev to their total dev fees
+    mapping ( address => DevFee ) public devFees;
+
+    // Master copy of the HigherPumpToken
+    address internal HigherPumpTokenMasterCopy;
+
+    // Master copy of the HigherPumpBondingCurve
+    address internal HigherPumpBondingCurveMasterCopy;
+
+    // HigherPumpGenerator
+    address internal HigherPumpGenerator;
 
     // Launch fee
     uint256 public launchFee;
@@ -57,10 +69,13 @@ contract LunarDatabase is IDatabase, Ownable {
     address public liquidityAdder;
 
     // Token Perma Locker
-    address public liquidityPermaLocker;
+    address public constant liquidityPermaLocker = 0x000000000000000000000000000000000000dEaD;
 
-    // Lunar Volume Tracker
-    address public lunarVolumeTracker;
+    // Router
+    address public router;
+
+    // Higher Volume Tracker
+    address public HigherVolumeTracker;
 
     // List of all bonded projects
     EnumerableSet.UintSet private bondedProjects;
@@ -76,16 +91,15 @@ contract LunarDatabase is IDatabase, Ownable {
     event Bonded(address token);
 
     constructor() {
-        launchFee = 0.0025 ether;
+        launchFee = 1 ether;
         feeRecipient = msg.sender;
-        liquidityPermaLocker = 0x000000000000000000000000000000000000dEaD;
     }
 
     /**
-        Sets the address of the LunarPumpTokenMasterCopy
+        Sets the address of the HigherPumpTokenMasterCopy
      */
-    function setLunarPumpTokenMasterCopy(address _lunarPumpTokenMasterCopy) external onlyOwner {
-        lunarPumpTokenMasterCopy = _lunarPumpTokenMasterCopy;
+    function setHigherPumpTokenMasterCopy(address _HigherPumpTokenMasterCopy) external onlyOwner {
+        HigherPumpTokenMasterCopy = _HigherPumpTokenMasterCopy;
     }
 
     /**
@@ -96,17 +110,25 @@ contract LunarDatabase is IDatabase, Ownable {
     }
 
     /**
-        Sets the address of the LunarPumpBondingCurveMasterCopy
+        Sets the router
      */
-    function setLunarPumpBondingCurveMasterCopy(address _lunarPumpBondingCurveMasterCopy) external onlyOwner {
-        lunarPumpBondingCurveMasterCopy = _lunarPumpBondingCurveMasterCopy;
+    function setRouter(address _router) external onlyOwner {
+        router = _router;
+        canRegisterVolume[_router] = true;
     }
 
     /**
-        Sets the address of the LunarPumpGenerator
+        Sets the address of the HigherPumpBondingCurveMasterCopy
      */
-    function setLunarPumpGenerator(address _lunarPumpGenerator) external onlyOwner {
-        lunarPumpGenerator = _lunarPumpGenerator;
+    function setHigherPumpBondingCurveMasterCopy(address _HigherPumpBondingCurveMasterCopy) external onlyOwner {
+        HigherPumpBondingCurveMasterCopy = _HigherPumpBondingCurveMasterCopy;
+    }
+
+    /**
+        Sets the address of the HigherPumpGenerator
+     */
+    function setHigherPumpGenerator(address _HigherPumpGenerator) external onlyOwner {
+        HigherPumpGenerator = _HigherPumpGenerator;
     }
 
     /**
@@ -131,29 +153,55 @@ contract LunarDatabase is IDatabase, Ownable {
     }
 
     /**
-        Sets the lunar volume tracker
+        Sets the Higher volume tracker
      */
-    function setLunarVolumeTracker(address _lunarVolumeTracker) external onlyOwner {
-        lunarVolumeTracker = _lunarVolumeTracker;
+    function setHigherVolumeTracker(address _HigherVolumeTracker) external onlyOwner {
+        HigherVolumeTracker = _HigherVolumeTracker;
     }
 
     /**
-        Sets the token perma locker
+        Sets the address of the contract that can register volume
      */
-    function setLiquidityPermaLocker(address _liquidityPermaLocker) external onlyOwner {
-        liquidityPermaLocker = _liquidityPermaLocker;
+    function setCanRegisterVolume(address _canRegisterVolume) external onlyOwner {
+        canRegisterVolume[_canRegisterVolume] = true;
     }
 
-    function registerVolume(address user, uint256 amount) external override {
-        if (projects[assetToProject[bondingCurveToToken[msg.sender]]].bondingCurve != msg.sender) {
+    function addDevFee(address dev) external payable {
+        if (msg.value == 0) {
             return;
         }
-        if (amount == 0 || user == address(0) || lunarVolumeTracker == address(0)) {
+        if (dev == address(0)) {
+            TransferHelper.safeTransferETH(feeRecipient, msg.value);
+            return;
+        }
+        unchecked {
+            devFees[dev].pendingDevFees += msg.value;
+        }
+    }
+
+    function claimDevFee(address dev) external {
+        uint256 pendingDevFees = devFees[dev].pendingDevFees;
+        require(pendingDevFees > 0, "No pending dev fees");
+        devFees[dev].claimedDevFees += pendingDevFees;
+        devFees[dev].pendingDevFees = 0;
+        (bool s,) = payable(dev).call{value: pendingDevFees}("");
+        require(s, "Failed to send dev fees");
+    }
+
+    function registerVolume(address token, address user, uint256 amount) external override {
+        if (isCurveOrAdder(msg.sender) == false) {
+            return;
+        }
+        if (amount == 0 || user == address(0) || HigherVolumeTracker == address(0)) {
             return;
         }
 
         // register volume
-        ILunarVolumeTracker(lunarVolumeTracker).addVolume(user, amount);
+        IHigherVolumeTracker(HigherVolumeTracker).addVolume(user, token, amount);
+    }
+
+    function isCurveOrAdder(address addr) external view returns (bool) {
+        projects[assetToProject[bondingCurveToToken[msg.sender]]].bondingCurve == msg.sender || canRegisterVolume[msg.sender] || addr == liquidityAdder;
     }
 
     function bondProject() external override {
@@ -193,7 +241,7 @@ contract LunarDatabase is IDatabase, Ownable {
         TransferHelper.safeTransferETH(feeRecipient, launchFee);
 
         // generate token and bonding curve
-        (address token, address bondingCurve) = ILunarGenerator(lunarPumpGenerator).generateProject(tokenPayload, bondingCurvePayload, liquidityAdder);
+        (address token, address bondingCurve) = IHigherGenerator(HigherPumpGenerator).generateProject(tokenPayload, bondingCurvePayload, liquidityAdder);
 
         // store project
         projects[projectNonce] = Project({
@@ -231,8 +279,8 @@ contract LunarDatabase is IDatabase, Ownable {
         return projectNonce - 1;
     }
 
-    function getLunarPumpTokenMasterCopy() external view override returns (address) {
-        return lunarPumpTokenMasterCopy;
+    function getHigherPumpTokenMasterCopy() external view override returns (address) {
+        return HigherPumpTokenMasterCopy;
     }
 
     function getAllDevProjects(address dev) external view returns (uint256[] memory) {
@@ -251,11 +299,11 @@ contract LunarDatabase is IDatabase, Ownable {
     }
 
     function getBondingCurveMasterCopy() external view override returns (address) {
-        return lunarPumpBondingCurveMasterCopy;
+        return HigherPumpBondingCurveMasterCopy;
     }
 
-    function getLunarPumpGenerator() external view override returns (address) {
-        return lunarPumpGenerator;
+    function getHigherPumpGenerator() external view override returns (address) {
+        return HigherPumpGenerator;
     }
 
     function isBonded(address token) external view override returns (bool) {
@@ -266,7 +314,7 @@ contract LunarDatabase is IDatabase, Ownable {
         return IBondingCurve(projects[projectID].bondingCurve).isBonded();
     }
 
-    function isLunarPumpToken(address token) external view override returns (bool) {
+    function isHigherPumpToken(address token) external view override returns (bool) {
         return assetToProject[token] != 0 && projects[assetToProject[token]].asset == token;
     }
 
@@ -288,6 +336,10 @@ contract LunarDatabase is IDatabase, Ownable {
 
     function getFeeRecipient() external view override returns (address) {
         return feeRecipient;
+    }
+
+    function owner() external view override returns (address) {
+        return this.getOwner();
     }
 
     function getProjectInfoByToken(address token) public view returns (address, address, string[] memory, address) {

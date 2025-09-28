@@ -10,35 +10,36 @@ import "./lib/Ownable.sol";
 
 /**
     Receives Tokens and Native Assets from the Bonding Curve and adds them to the desired DEX
-
-    NOTE: ADD FAIL SAFE IN CASE OF UNFORSEEN EVENT -- WORST CASE IS FUNDS ARE LOCKED!!!
  */
 contract LiquidityAdder is Ownable, ILiquidityAdder {
 
-    // Lunar Database
+    // Higher Database
     address private immutable database;
 
     // Fee on bonding
     uint256 public bondFee = 200; // 20%
 
     // token slippage
-    uint256 public tokenSlippage = 92;
+    uint256 public tokenSlippage = 50;
 
     // DEX Info
-    address public dex = 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24;
-    address public factory = 0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6;
-    address public WETH = 0x4200000000000000000000000000000000000006;
-    bytes32 public INIT_CODE_PAIR_HASH = 0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f;
+    address public dex;
+    address public factory;
+    address public constant WETH = 0x6100E367285b01F48D07953803A2d8dCA5D19873;
+    bytes32 public INIT_CODE_PAIR_HASH;
 
     // Whether or not dust is enforced
     bool public enforceDust;
 
-    constructor(address _database) {
+    constructor(address _database, address dex_, address factory_, bytes32 INIT_CODE_PAIR_HASH_) {
         database = _database;
+        dex = dex_;
+        factory = factory_;
+        INIT_CODE_PAIR_HASH = INIT_CODE_PAIR_HASH_;
     }
 
-    modifier onlyLunarPumpTokens(address token) {
-        require(IDatabase(database).isLunarPumpToken(token), "LiquidityAdder: Token is not a LunarPump Token");
+    modifier onlyHigherPumpTokens(address token) {
+        require(IDatabase(database).isHigherPumpToken(token), "LiquidityAdder: Token is not a HigherPump Token");
         _;
     }
 
@@ -79,7 +80,7 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         INIT_CODE_PAIR_HASH = _INIT_CODE_PAIR_HASH;
     }
 
-    function bond(address token) external payable override onlyLunarPumpTokens(token) {
+    function bond(address token) external payable override onlyHigherPumpTokens(token) {
 
         // ensure request comes from the bonding curve
         require(
@@ -90,31 +91,6 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         // take fee
         uint256 liquidityAmount = _takeFee(token, msg.value);
         uint256 tokenAmount = IERC20(token).balanceOf(address(this));
-
-        // determine if LP has been dusted prior to liquidity add, send liquidity to dex and call sync if dusted
-        if (checkDusted(token) && enforceDust) {
-            // add liquidity at equal ratio, call sync
-            address pair = pairFor(token, WETH);
-            uint256 wethAmountInLP = IERC20(WETH).balanceOf(pair);
-            uint256 tokenAmountInLP = IERC20(token).balanceOf(pair);
-
-            if (wethAmountInLP > 0 && isContract(pair)) {
-                // ensure the ratio will match the desired ratio
-                // ratio = tokenAmount * 1e18 / wethAmount
-                // tokenAmount = (ratio * wethAmount) / 1e18
-                uint256 desiredRatio = ( tokenAmount * 1e18 ) / liquidityAmount;
-                uint256 desiredTokenAmount = ( ( desiredRatio * wethAmountInLP ) / 1e18 ) - tokenAmountInLP;
-
-                // send desiredTokenAmount to dex and sync the LP
-                IERC20(token).transfer(pair, desiredTokenAmount);
-
-                // sync the LP
-                IPair(pair).sync();
-
-                // reduce from tokenAmount
-                tokenAmount -= desiredTokenAmount;
-            }
-        }
 
         // add liquidity to dex
         IERC20(token).approve(dex, tokenAmount);

@@ -11,13 +11,13 @@ pragma solidity 0.8.28;
 
 import "./lib/Ownable.sol";
 import "./interfaces/IBondingCurve.sol";
-import "./interfaces/ILunarPumpToken.sol";
-import "./interfaces/ILunarGenerator.sol";
+import "./interfaces/IHigherPumpToken.sol";
+import "./interfaces/IHigherGenerator.sol";
 import "./interfaces/IDatabase.sol";
 import "./interfaces/IICOManager.sol";
 import "./interfaces/IICOBondingCurve.sol";
 
-contract LunarGenerator is ILunarGenerator {
+contract HigherGenerator is IHigherGenerator {
 
     IDatabase public immutable database;
 
@@ -35,7 +35,7 @@ contract LunarGenerator is ILunarGenerator {
         Generates a token and bonding curve, initializes both and returns their addresses
      */
     function generateProject(bytes calldata tokenPayload, bytes calldata bondingCurvePayload_, address liquidityAdder) external override returns (address token, address bondingCurve) {
-        require(msg.sender == address(database), "LunarGenerator: Only database can call this function");
+        require(msg.sender == address(database), "HigherGenerator: Only database can call this function");
 
         // generate token
         token = generateToken();
@@ -71,13 +71,13 @@ contract LunarGenerator is ILunarGenerator {
         }
         
         // initialize the token contract with the bonding curve address
-        ILunarPumpToken(token).__init__(tokenPayload, bondingCurve);
+        IHigherPumpToken(token).__init__(tokenPayload, bondingCurve);
         
         return (token, bondingCurve);
     }
 
     function generateToken() internal returns(address) {
-        return _clone(database.getLunarPumpTokenMasterCopy());
+        return _clone(database.getHigherPumpTokenMasterCopy());
     }
 
     function generateBondingCurve() internal returns(address) {

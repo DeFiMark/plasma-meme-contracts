@@ -555,7 +555,7 @@ contract BondingCurve is BondingCurveData, IICOBondingCurve {
         IFeeRecipient(ILiquidityAdder(liquidityAdder).getFeeRecipient()).takeVolumeFee{value: fee}(token);
 
         // log value
-        IDatabase(ILiquidityAdder(liquidityAdder).getDatabase()).registerVolume(user, amount);
+        IDatabase(ILiquidityAdder(liquidityAdder).getDatabase()).registerVolume(token, user, amount);
 
         // track our own volume
         unchecked {

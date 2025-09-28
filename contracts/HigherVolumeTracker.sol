@@ -2,15 +2,18 @@
 pragma solidity 0.8.28;
 
 import "./lib/Ownable.sol";
-import "./interfaces/ILunarVolumeTracker.sol";
+import "./interfaces/IHigherVolumeTracker.sol";
 
-contract LunarVolumeTracker is ILunarVolumeTracker, Ownable {
+contract HigherVolumeTracker is IHigherVolumeTracker, Ownable {
 
     // Database contract
     address public database;
 
     // Maps a user to volume bet on platform
     mapping ( address => uint256 ) public volumeFor;
+
+    // Maps a token to volume bet on platform
+    mapping ( address => uint256 ) public volumeForToken;
 
     // Total Volume
     uint256 public totalVolume;
@@ -19,10 +22,11 @@ contract LunarVolumeTracker is ILunarVolumeTracker, Ownable {
     address[] public allUsers;
 
     // Data needed for token to display on scanners
-    string public constant name = "LunarVolume";
-    string public constant symbol = "LVolume";
+    string public constant name = "PM Volume";
+    string public constant symbol = "PMVOL";
     uint8 public constant decimals = 18;
     event Transfer(address indexed from, address indexed to, uint256 value);
+    event TokenVolume(address indexed token, address indexed user, uint256 amount);
 
     constructor(address _database) {
         database = _database;
@@ -32,8 +36,8 @@ contract LunarVolumeTracker is ILunarVolumeTracker, Ownable {
         database = _database;
     }
 
-    function addVolume(address user, uint256 amount) external override {
-        require(msg.sender == database, "LunarVolumeTracker: Only Database can call this function");
+    function addVolume(address user, address token, uint256 amount) external override {
+        require(msg.sender == database, "HigherVolumeTracker: Only Database can call this function");
         
         // if new user, push to list
         if (volumeFor[user] == 0) {
@@ -43,6 +47,7 @@ contract LunarVolumeTracker is ILunarVolumeTracker, Ownable {
         // add to user volume
         unchecked {
             volumeFor[user] += amount;
+            volumeForToken[token] += amount;
             totalVolume += amount;
         }
 
