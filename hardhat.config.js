@@ -5,55 +5,25 @@ let secret = require("./secret");
 module.exports = {
   networks: {
     hardhat: {
-      chainId: 56//56//8453//137//8453//137//8453//56
+      chainId: 9745
     },
-    bscTestnet: {
-      url: 'https://data-seed-prebsc-2-s1.binance.org:8545/',
-      accounts: [secret.key]
-    },
-    bscMainnet: {
-      url: 'https://bnb-mainnet.g.alchemy.com/v2/BI5XlYByNdQfh3hcluwetuwR9KzTSn01',
-      accounts: [secret.key]
-    },
-    polygonTestnet: {
-      url: 'https://polygon-mumbai-bor-rpc.publicnode.com/',
-      accounts: [secret.key]
-    },
-    polygonMainnet: {
-      url: 'https://polygon-rpc.com/',//'https://polygon-bor-rpc.publicnode.com',
+    plasma: {
+      url: 'https://rpc.plasma.to',
       accounts: [secret.key],
-      // chainId: 137
+      chainId: 9745
     },
-    baseMainnet: {
-      url: 'https://base-mainnet.g.alchemy.com/v2/BI5XlYByNdQfh3hcluwetuwR9KzTSn01',
-      accounts: [secret.key],
-      chainId: 8453
-    },
-    infinaeonMainnet: {
-      url: 'https://rpc.infinaeon.com/',
-      accounts: [secret.key],
-      chainId: 420000
-    }
   },
   etherscan: {
     apiKey: secret.bscscanAPI,//polygonAPI,//basescanAPI,//polygonAPI//bscscanAPI
     customChains: [
       {
-        network: "base",
-        chainId: 8453,
+        network: "plasma",
+        chainId: 9745,
         urls: {
-          apiURL: "https://api.basescan.org/api",
-          browserURL: "https://basescan.org/"
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan",
+          browserURL: "https://plasmaexplorer.io"
         }
       }
-      // {
-      //   network: "infinaeon",
-      //   chainId: 420000,
-      //   urls: {
-      //     apiURL: "https://explorer.infinaeon.com/api",
-      //     browserURL: "https://explorer.infinaeon.com/"
-      //   }
-      // }
     ]
   },
   solidity: {
@@ -70,18 +40,18 @@ module.exports = {
           }
         }
       },
-      {
-        version: "0.8.20",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-            details: {
-              yul: false
-            }
-          }
-        }
-      }
+      // {
+      //   version: "0.8.20",
+      //   settings: {
+      //     optimizer: {
+      //       enabled: true,
+      //       runs: 200,
+      //       details: {
+      //         yul: false
+      //       }
+      //     }
+      //   }
+      // }
     ]
   }
 };

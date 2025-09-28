@@ -1,5 +1,5 @@
 {
-  "name": "Higher-contracts",
+  "name": "plasma-meme-contracts",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -11,15 +11,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DeFiMark/LunarPump-Contracts.git"
+    "url": "git+https://github.com/DeFiMark/plasma-meme-contracts.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/DeFiMark/LunarPump-Contracts/issues"
+    "url": "https://github.com/DeFiMark/plasma-meme-contracts/issues"
   },
-  "homepage": "https://github.com/DeFiMark/LunarPump-Contracts#readme",
+  "homepage": "https://github.com/DeFiMark/plasma-meme-contracts#readme",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-waffle": "^2.0.6",
