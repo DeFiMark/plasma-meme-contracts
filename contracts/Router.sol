@@ -249,7 +249,7 @@ library HigherLibrary {
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
-    function pairFor(address factory, address tokenA, address tokenB) internal pure returns (address pair) {
+    function pairFor(address factory, address tokenA, address tokenB) internal view returns (address pair) {
         (address token0, address token1) = sortTokens(tokenA, tokenB);
         pair = address(uint160(uint(keccak256(abi.encodePacked(
                 hex'ff',
@@ -656,12 +656,12 @@ contract HigherRouter is IHigherRouter {
         address[] calldata path,
         address to,
         uint deadline
-    ) external payable {
+    ) external payable ensure(deadline) {
         require(path[0] == WETH, 'HigherRouter: INVALID_PATH');
         require(path.length == 2, 'HigherRouter: INVALID_PATH_LENGTH');
         uint256 amountIn = _takeFee(HigherLibrary.pairFor(factory, path[0], path[1]), msg.value);
 
-        amounts = HigherLibrary.getAmountsOut(factory, amountIn, path);
+        uint[] memory amounts = HigherLibrary.getAmountsOut(factory, amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'HigherRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETH).deposit{value: amounts[0]}();
         assert(IWETH(WETH).transfer(HigherLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
@@ -674,10 +674,10 @@ contract HigherRouter is IHigherRouter {
         address[] calldata path,
         address to,
         uint deadline
-    ) external {
+    ) external ensure(deadline) {
         require(path[path.length - 1] == WETH, 'HigherRouter: INVALID_PATH');
         require(path.length == 2, 'HigherRouter: INVALID_PATH_LENGTH');
-        amounts = HigherLibrary.getAmountsOut(factory, amountIn, path);
+        uint[] memory amounts = HigherLibrary.getAmountsOut(factory, amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'HigherRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
             path[0], msg.sender, HigherLibrary.pairFor(factory, path[0], path[1]), amounts[0]

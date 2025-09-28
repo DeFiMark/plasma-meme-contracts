@@ -30,23 +30,23 @@ contract HigherGenerator is IHigherGenerator {
         token = generateToken();
         bondingCurve = generateBondingCurve();
 
-        ILunarPumpToken(token).__init__(tokenPayload, bondingCurve);
+        IHigherPumpToken(token).__init__(tokenPayload, bondingCurve);
         IBondingCurve(bondingCurve).__init__(bondingCurvePayload, token, liquidityAdder);
 
         return (token, bondingCurve);
     }
 
     /**
-        @dev Deploys and returns the address of a clone of the lunarPumpTokenMasterCopy
+        @dev Deploys and returns the address of a clone of the higherPumpTokenMasterCopy
         Created by DeFi Mark To Allow Clone Contract To Easily Create Clones Of Itself
         Without redundancy
      */
     function generateToken() internal returns(address) {
-        return _clone(database.getLunarPumpTokenMasterCopy());
+        return _clone(database.getHigherPumpTokenMasterCopy());
     }
 
     /**
-        @dev Deploys and returns the address of a clone of the lunarPumpBondingCurveMasterCopy
+        @dev Deploys and returns the address of a clone of the higherPumpBondingCurveMasterCopy
         Created by DeFi Mark To Allow Clone Contract To Easily Create Clones Of Itself
         Without redundancy
      */

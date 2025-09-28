@@ -68,14 +68,6 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
         factory = _factory;
     }
 
-    function setWETH(address _WETH) external onlyOwner {
-        WETH = _WETH;
-    }
-
-    function setEnforceDust(bool _enforceDust) external onlyOwner {
-        enforceDust = _enforceDust;
-    }
-    
     function setInitCodePairHash(bytes32 _INIT_CODE_PAIR_HASH) external onlyOwner {
         INIT_CODE_PAIR_HASH = _INIT_CODE_PAIR_HASH;
     }

@@ -13,4 +13,6 @@ interface IDatabase {
     function registerVolume(address token, address user, uint256 amount) external;
     function getHigherPumpGenerator() external view returns (address);
     function owner() external view returns (address);
+    function getProjectDev(address token) external view returns (address);
+    function addDevFee(address dev) external payable;
 }

@@ -165,7 +165,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         }
 
         // emit event
-        emit Buy(recipient, ethIn, tokensBought);
+        emit Buy(token, recipient, ethIn, tokensBought);
 
         // log trade
         trades[tradeNonce] = Trade({
@@ -211,7 +211,7 @@ contract BondingCurve is BondingCurveData, IBondingCurve {
         }
 
         // emit event
-        emit Sell(msg.sender, ethOutWei, tokenAmount);
+        emit Sell(token, msg.sender, ethOutWei, tokenAmount);
 
         // log trade
         trades[tradeNonce] = Trade({

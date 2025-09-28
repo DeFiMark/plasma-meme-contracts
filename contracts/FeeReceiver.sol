@@ -1,16 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-interface IFeeRecipient {
-    function takeBondFee(address token) external payable;
-    function takeVolumeFee(address token) external payable;
-    function takeFee(address pair) external payable;
-}
-
-interface IDatabase {
-    function getProjectDev(address token) external view returns (address);
-    function addDevFee(address dev) external payable;
-}
+import "./interfaces/IFeeRecipient.sol";
+import "./lib/TransferHelper.sol";
+import "./interfaces/IDatabase.sol";
 
 interface IHigherPair {
     function token0() external view returns (address);
@@ -21,8 +14,6 @@ interface IWETH {
     function deposit() external payable;
     function transfer(address to, uint value) external returns (bool);
 }
-
-import "./lib/TransferHelper.sol";
 
 contract FeeReceiver is IFeeRecipient {
 
@@ -53,7 +44,7 @@ contract FeeReceiver is IFeeRecipient {
         splitFees(address(this).balance, IDatabase(database).getProjectDev(token));
     }
     
-    function takeRouterFee(address pair, address user) external override payable returns (address token) {
+    function takeRouterFee(address pair, address) external override payable returns (address token) {
 
         // get token0 and token1 from pair
         address token0 = IHigherPair(pair).token0();
