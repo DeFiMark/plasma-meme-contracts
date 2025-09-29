@@ -93,6 +93,14 @@ contract HigherVolumeTracker is IHigherVolumeTracker, Ownable {
         return volumes;
     }
 
+    function batchVolumesForTokens(address[] calldata tokens) external view returns (uint256[] memory) {
+        uint256[] memory volumes = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            volumes[i] = volumeForToken[tokens[i]];
+        }
+        return volumes;
+    }
+
     function paginateUsers(uint256 startIndex, uint256 endIndex) external view returns (address[] memory) {
         if (endIndex > allUsers.length) {
             endIndex = allUsers.length;
