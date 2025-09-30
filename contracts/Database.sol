@@ -5,6 +5,7 @@ import "./interfaces/IDatabase.sol";
 import "./lib/TransferHelper.sol";
 import "./lib/Ownable.sol";
 import "./lib/EnumerableSet.sol";
+import "./interfaces/IHigherGenerator.sol";
 
 interface IBondingCurve {
     function getVersionNo() external view returns (uint32);
@@ -12,10 +13,6 @@ interface IBondingCurve {
     function __init__(bytes calldata payload, address token, address liquidityAdder) external;
     function getToken() external view returns (address);
     function buyTokens(address recipient, uint256 minOut) external payable returns (uint256 tokensBought);
-}
-
-interface IHigherGenerator {
-    function generateProject(bytes calldata tokenPayload, bytes calldata bondingCurvePayload, address liquidityAdder) external returns (address token, address bondingCurve);
 }
 
 interface IHigherVolumeTracker {
@@ -29,7 +26,11 @@ contract HigherDatabase is IDatabase, Ownable {
         address asset;
         address bondingCurve;
         string[] metadata; // social links, description, imageUrl
+        string name;
+        string symbol;
         address dev;
+        address creatorAddress;
+        uint256 launchTime;
     }
 
     // Mapping of project nonce to project
@@ -80,9 +81,6 @@ contract HigherDatabase is IDatabase, Ownable {
     // Token Perma Locker
     address public constant liquidityPermaLocker = 0x000000000000000000000000000000000000dEaD;
 
-    // Router
-    address public router;
-
     // Higher Volume Tracker
     address public HigherVolumeTracker;
 
@@ -96,7 +94,7 @@ contract HigherDatabase is IDatabase, Ownable {
     bool public paused;
 
     // Event emitted when project is created
-    event NewTokenCreated(address indexed dev, address token, address bondingCurve, uint nonce, bytes projectData);
+    event NewTokenCreated(address indexed dev, address token, address bondingCurve, string name, string symbol);
     event Bonded(address token);
 
     constructor() {
@@ -116,14 +114,6 @@ contract HigherDatabase is IDatabase, Ownable {
      */
     function setPaused(bool _paused) external onlyOwner {
         paused = _paused;
-    }
-
-    /**
-        Sets the router
-     */
-    function setRouter(address _router) external onlyOwner {
-        router = _router;
-        canRegisterVolume[_router] = true;
     }
 
     /**
@@ -173,6 +163,13 @@ contract HigherDatabase is IDatabase, Ownable {
      */
     function setCanRegisterVolume(address _canRegisterVolume) external onlyOwner {
         canRegisterVolume[_canRegisterVolume] = true;
+    }
+
+    /**
+        Sets the address of the contract that can register volume
+     */
+    function setProjectCreatorRewardsAddress(address token, address _projectCreatorRewardsAddress) external onlyOwner {
+        projects[assetToProject[token]].creatorAddress = _projectCreatorRewardsAddress;
     }
 
     function addDevFee(address dev) external override payable {
@@ -234,7 +231,9 @@ contract HigherDatabase is IDatabase, Ownable {
     function launchProject(
         string[] calldata metadata,
         bytes calldata tokenPayload,
-        bytes calldata bondingCurvePayload
+        bytes calldata bondingCurvePayload,
+        string calldata name,
+        string calldata symbol
     ) external payable returns (uint256) {
         require(
             !paused,
@@ -246,18 +245,29 @@ contract HigherDatabase is IDatabase, Ownable {
             'Insufficient Fee'
         );
 
+        // redefine args for stack
+        string memory _name = name;
+        string memory _symbol = symbol;
+        bytes memory _tokenPayload = tokenPayload;
+        bytes memory _bondingCurvePayload = bondingCurvePayload;
+        string[] memory _metadata = metadata;
+
         // send fee to fee recipient
         TransferHelper.safeTransferETH(feeRecipient, launchFee);
 
         // generate token and bonding curve
-        (address token, address bondingCurve) = IHigherGenerator(HigherPumpGenerator).generateProject(tokenPayload, bondingCurvePayload, liquidityAdder);
+        (address token, address bondingCurve) = IHigherGenerator(HigherPumpGenerator).generateProject(_name, _symbol, _tokenPayload, _bondingCurvePayload, liquidityAdder);
 
         // store project
         projects[projectNonce] = Project({
             asset: token,
             bondingCurve: bondingCurve,
-            metadata: metadata,
-            dev: tx.origin
+            metadata: _metadata,
+            name: _name,
+            symbol: _symbol,
+            dev: tx.origin,
+            creatorAddress: tx.origin,
+            launchTime: block.timestamp
         });
 
         // store asset to project mapping
@@ -273,7 +283,7 @@ contract HigherDatabase is IDatabase, Ownable {
         allDevProjects[tx.origin].push(projectNonce);
 
         // emit new event
-        emit NewTokenCreated(tx.origin, token, bondingCurve, projectNonce, abi.encode(metadata, tokenPayload, bondingCurvePayload));
+        emit NewTokenCreated(tx.origin, token, bondingCurve, _name, _symbol);
 
         // increment nonce
         unchecked {
@@ -290,6 +300,10 @@ contract HigherDatabase is IDatabase, Ownable {
 
     function getHigherPumpTokenMasterCopy() external view override returns (address) {
         return HigherPumpTokenMasterCopy;
+    }
+
+    function getLaunchTime(address token) external view returns (uint256) {
+        return projects[assetToProject[token]].launchTime;
     }
 
     function getAllDevProjects(address dev) external view returns (uint256[] memory) {
@@ -339,6 +353,10 @@ contract HigherDatabase is IDatabase, Ownable {
         return projects[assetToProject[token]].dev;
     }
 
+    function getProjectCreatorRewardsAddress(address token) external view override returns (address) {
+        return projects[assetToProject[token]].creatorAddress;
+    }
+
     function getLiquidityLocker() external pure override returns (address) {
         return liquidityPermaLocker;
     }
@@ -354,6 +372,15 @@ contract HigherDatabase is IDatabase, Ownable {
     function getProjectInfoByToken(address token) public view returns (address, address, string[] memory, address) {
         Project memory project = projects[assetToProject[token]];
         return (project.asset, project.bondingCurve, project.metadata, project.dev);
+    }
+
+    function getProjectIDsByTokens(address[] calldata tokens) external view returns (uint256[] memory) {
+        uint len = tokens.length;
+        uint256[] memory projectIDs = new uint256[](len);
+        for (uint256 i = 0; i < len; i++) {
+            projectIDs[i] = assetToProject[tokens[i]];
+        }
+        return projectIDs;
     }
 
     function batchGetProjectInfoByTokens(address[] calldata tokens) external view returns (address[] memory, address[] memory, string[][] memory, address[] memory) {
@@ -388,6 +415,43 @@ contract HigherDatabase is IDatabase, Ownable {
         }
 
         return (assets, bondingCurves, metadata, devs);
+    }
+
+    function batchGetProjectAvancedInfo(uint256[] calldata projectIDs) public view returns (
+        address[] memory assets, 
+        address[] memory bondingCurves, 
+        string[][] memory metadata, 
+        address[] memory devs,
+        string[] memory names,
+        string[] memory symbols,
+        uint256[] memory launchTimes,
+        bool[] memory isBonded_
+    ) {
+        
+        uint len = projectIDs.length;
+        assets = new address[](len);
+        bondingCurves = new address[](len);
+        metadata = new string[][](len);
+        devs = new address[](len);
+        names = new string[](len);
+        symbols = new string[](len);
+        launchTimes = new uint256[](len);
+        isBonded_ = new bool[](len);
+
+
+        for (uint256 i = 0; i < len; i++) {
+            Project memory project = projects[projectIDs[i]];
+            assets[i] = project.asset;
+            bondingCurves[i] = project.bondingCurve;
+            metadata[i] = project.metadata;
+            devs[i] = project.dev;
+            names[i] = project.name;
+            symbols[i] = project.symbol;
+            launchTimes[i] = project.launchTime;
+            isBonded_[i] = IBondingCurve(project.bondingCurve).isBonded();
+        }
+
+        return (assets, bondingCurves, metadata, devs, names, symbols, launchTimes, isBonded_);
     }
 
     function paginateBondedProjectIDs(uint256 startIndex, uint256 endIndex) external view returns (uint256[] memory) {

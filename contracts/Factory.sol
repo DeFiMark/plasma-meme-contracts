@@ -387,7 +387,7 @@ contract HigherFactory is IHigherFactory {
     mapping ( address => bool ) private _canCreatePair;
 
     // Fee on swap
-    uint256 internal swapFee;
+    uint256 internal swapFee = 150; // 1.5%
     uint256 internal constant swapFeeDenominator = 10_000;
 
     // Global Swap Event

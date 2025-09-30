@@ -40,16 +40,20 @@ contract HigherPumpTokenData {
 
 contract HigherPumpToken is HigherPumpTokenData, IHigherPumpToken {
 
-    function __init__(bytes calldata payload, address bondingCurve_) external override {
+    function __init__(bytes calldata, string calldata name_, string calldata symbol_, address bondingCurve_) external override {
         require(bondingCurve == address(0), 'Already Initialized');
         require(bondingCurve_ != address(0), 'Zero Bonding Curve');
 
         // decode payload
-        (
-            _name,
-            _symbol
-        ) = abi.decode(payload, (string, string));
-        
+        // (
+        //     _name,
+        //     _symbol
+        // ) = abi.decode(payload, (string, string));
+
+        // set name and symbol
+        _name = name_;
+        _symbol = symbol_;
+
         // set bonding curve
         bondingCurve = bondingCurve_;
 

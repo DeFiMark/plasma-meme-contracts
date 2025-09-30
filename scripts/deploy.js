@@ -61,11 +61,11 @@ async function main() {
     console.log('Account nonce: ', baseNonce);
 
     // Deploy Database first (no constructor parameters)
-    // const HigherDatabase = await deployContract('HigherDatabase', 'contracts/Database.sol:HigherDatabase', []);
-    // await sleep(10_000);
+    const HigherDatabase = await deployContract('HigherDatabase', 'contracts/Database.sol:HigherDatabase', []);
+    await sleep(10_000);
 
-    const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x5ad45DCFC2049362eB62321265248e6D6053b5D9');
-    await sleep(5_000);
+    // const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x5ad45DCFC2049362eB62321265248e6D6053b5D9');
+    // await sleep(5_000);
 
     // Deploy Volume Tracker (requires database address)
     const HigherVolumeTracker = await deployContract('HigherVolumeTracker', 'contracts/HigherVolumeTracker.sol:HigherVolumeTracker', [HigherDatabase.address]);
@@ -105,12 +105,12 @@ async function main() {
     await sleep(5_000);
 
     // Deploy Supply Fetcher (no constructor parameters)
-    const SupplyFetcher = await deployContract('SupplyFetcher', 'contracts/SupplyFetcher.sol:SupplyFetcher', []);
-    await sleep(5_000);
+    // const SupplyFetcher = await deployContract('SupplyFetcher', 'contracts/SupplyFetcher.sol:SupplyFetcher', []);
+    // await sleep(5_000);
 
     // Verify all deployed contracts
-    // await verify(HigherDatabase.address, [], 'contracts/Database.sol:HigherDatabase');
-    await verify(SupplyFetcher.address, [], 'contracts/SupplyFetcher.sol:SupplyFetcher');
+    await verify(HigherDatabase.address, [], 'contracts/Database.sol:HigherDatabase');
+    // await verify(SupplyFetcher.address, [], 'contracts/SupplyFetcher.sol:SupplyFetcher');
     await verify(FeeReceiver.address, [owner.address, owner.address, owner.address, HigherDatabase.address], 'contracts/FeeReceiver.sol:FeeReceiver');
     await verify(HigherDatabase.address, [], 'contracts/Database.sol:HigherDatabase');
     await verify(LiquidityAdder.address, [HigherDatabase.address, HigherRouter.address, HigherFactory.address, INIT_CODE_PAIR_HASH], 'contracts/LiquidityAdder.sol:LiquidityAdder');
@@ -149,11 +149,6 @@ async function main() {
     await HigherDatabase.setFeeRecipient(FeeReceiver.address, { nonce: getNonce() });
     await sleep(5000);
     console.log('Set Fee receiver');
-
-    // Set router in database
-    await HigherDatabase.setRouter(HigherRouter.address, { nonce: getNonce() });
-    await sleep(5000);
-    console.log('Set Router');
 
     // white list router and factory for canRegisterVolume in database
     await HigherDatabase.setCanRegisterVolume(HigherRouter.address, { nonce: getNonce() });

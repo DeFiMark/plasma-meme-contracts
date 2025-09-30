@@ -26,11 +26,11 @@ contract HigherGenerator is IHigherGenerator {
     /**
         Generates a token and bonding curve, initializes both and returns their addresses
      */
-    function generateProject(bytes calldata tokenPayload, bytes calldata bondingCurvePayload, address liquidityAdder) external override returns (address token, address bondingCurve) {
+    function generateProject(string calldata name, string calldata symbol, bytes calldata tokenPayload, bytes calldata bondingCurvePayload, address liquidityAdder) external override returns (address token, address bondingCurve) {
         token = generateToken();
         bondingCurve = generateBondingCurve();
 
-        IHigherPumpToken(token).__init__(tokenPayload, bondingCurve);
+        IHigherPumpToken(token).__init__(tokenPayload, name, symbol, bondingCurve);
         IBondingCurve(bondingCurve).__init__(bondingCurvePayload, token, liquidityAdder);
 
         return (token, bondingCurve);

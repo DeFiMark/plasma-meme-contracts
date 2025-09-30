@@ -60,11 +60,28 @@ async function main() {
     nonceOffset = 0;
     console.log('Account nonce: ', baseNonce);
 
-    const Locker = await deployContract('Locker', 'contracts/Locker.sol:Locker', []);
-    await sleep(5_000);
+    // const Factory = await fetchContract('contracts/Factory.sol:HigherFactory', '0xAa55cA0C522d575A7537587D805960b25fb95A32');
+    // await sleep(5_000);
 
-    await verify(Locker.address, [], 'contracts/Locker.sol:Locker');
-    
+    // await Factory.setSwapFee(150, { nonce: getNonce() });
+    // await sleep(5_000);
+    // console.log('Set Swap Fee');
+
+    // const Locker = await deployContract('Locker', 'contracts/Locker.sol:Locker', []);
+    // await sleep(5_000);
+
+    // await verify(Locker.address, [], 'contracts/Locker.sol:Locker');
+
+    // const TokenInfoScraper = await deployContract('TokenInfoScraper', 'contracts/TokenInfoScraper.sol:TokenInfoScraper', []);
+    // await sleep(5_000);
+
+    // await verify(TokenInfoScraper.address, [], 'contracts/TokenInfoScraper.sol:TokenInfoScraper');
+
+    // const DEXInfoScraper = await deployContract('DEXInfoScraper', 'contracts/DEXInfoScraper.sol:DEXInfoScraper', []);
+    // await sleep(5_000);
+
+    // await verify(DEXInfoScraper.address, [], 'contracts/DEXInfoScraper.sol:DEXInfoScraper');
+
     // Deploy Supply Fetcher (no constructor parameters)
     // const SupplyFetcher = await deployContract('SupplyFetcher', 'contracts/SupplyFetcher.sol:SupplyFetcher', []);
     // await sleep(5_000);

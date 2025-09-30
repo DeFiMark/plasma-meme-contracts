@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import "./interfaces/IFeeRecipient.sol";
 import "./lib/TransferHelper.sol";
 import "./interfaces/IDatabase.sol";
+import "./lib/Ownable.sol";
 
 interface IHigherPair {
     function token0() external view returns (address);
@@ -15,16 +16,16 @@ interface IWETH {
     function transfer(address to, uint value) external returns (bool);
 }
 
-contract FeeReceiver is IFeeRecipient {
+contract FeeReceiver is IFeeRecipient, Ownable {
 
     address public immutable database;
-    address public immutable platformRecipient;
-    address public immutable buyBurnRecipient;
-    address public immutable stakingRecipient;
+    address public platformRecipient;
+    address public buyBurnRecipient;
+    address public stakingRecipient;
 
-    uint256 public constant devCut = 50;
-    uint256 public constant buyBurnCut = 50;
-    uint256 public constant stakingCut = 25;
+    uint256 public devCut = 50;
+    uint256 public buyBurnCut = 50;
+    uint256 public stakingCut = 25;
     uint256 public constant FEE_DENOMINATOR = 150;
 
     address public constant WETH = 0x6100E367285b01F48D07953803A2d8dCA5D19873;
@@ -36,12 +37,36 @@ contract FeeReceiver is IFeeRecipient {
         stakingRecipient = _stakingRecipient;
     }
 
+    function setPlatformRecipient(address _platformRecipient) external onlyOwner {
+        platformRecipient = _platformRecipient;
+    }
+    
+    function setBuyBurnRecipient(address _buyBurnRecipient) external onlyOwner {
+        buyBurnRecipient = _buyBurnRecipient;
+    }
+
+    function setStakingRecipient(address _stakingRecipient) external onlyOwner {
+        stakingRecipient = _stakingRecipient;
+    }
+
+    function setDevCut(uint256 _devCut) external onlyOwner {
+        devCut = _devCut;
+    }
+    
+    function setBuyBurnCut(uint256 _buyBurnCut) external onlyOwner {
+        buyBurnCut = _buyBurnCut;
+    }
+
+    function setStakingCut(uint256 _stakingCut) external onlyOwner {
+        stakingCut = _stakingCut;
+    }
+
     function takeBondFee(address token) external payable override {
-        splitFees(address(this).balance, IDatabase(database).getProjectDev(token));
+        splitFees(address(this).balance, IDatabase(database).getProjectCreatorRewardsAddress(token));
     }
 
     function takeVolumeFee(address token) external payable override {
-        splitFees(address(this).balance, IDatabase(database).getProjectDev(token));
+        splitFees(address(this).balance, IDatabase(database).getProjectCreatorRewardsAddress(token));
     }
     
     function takeRouterFee(address pair, address) external override payable returns (address token) {
@@ -54,7 +79,7 @@ contract FeeReceiver is IFeeRecipient {
         token = token0 == WETH ? token1 : token0;
 
         // get the dev from the database
-        address dev = IDatabase(database).getProjectDev(token);
+        address dev = IDatabase(database).getProjectCreatorRewardsAddress(token);
 
         // split fees    
         splitFees(address(this).balance, dev);

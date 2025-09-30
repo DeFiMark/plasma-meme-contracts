@@ -14,5 +14,6 @@ interface IDatabase {
     function getHigherPumpGenerator() external view returns (address);
     function owner() external view returns (address);
     function getProjectDev(address token) external view returns (address);
+    function getProjectCreatorRewardsAddress(address token) external view returns (address);
     function addDevFee(address dev) external payable;
 }
