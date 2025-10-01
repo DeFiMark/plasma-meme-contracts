@@ -64,7 +64,7 @@ async function main() {
     const HigherDatabase = await deployContract('HigherDatabase', 'contracts/Database.sol:HigherDatabase', []);
     await sleep(10_000);
 
-    // const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x5ad45DCFC2049362eB62321265248e6D6053b5D9');
+    // const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x6301d3534Fa0be6FA20E17869d52295A71b2f8C5');
     // await sleep(5_000);
 
     // Deploy Volume Tracker (requires database address)
