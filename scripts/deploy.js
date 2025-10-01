@@ -104,13 +104,8 @@ async function main() {
     const FeeReceiver = await deployContract('FeeReceiver', 'contracts/FeeReceiver.sol:FeeReceiver', [owner.address, owner.address, owner.address, HigherDatabase.address]);
     await sleep(5_000);
 
-    // Deploy Supply Fetcher (no constructor parameters)
-    // const SupplyFetcher = await deployContract('SupplyFetcher', 'contracts/SupplyFetcher.sol:SupplyFetcher', []);
-    // await sleep(5_000);
-
     // Verify all deployed contracts
     await verify(HigherDatabase.address, [], 'contracts/Database.sol:HigherDatabase');
-    // await verify(SupplyFetcher.address, [], 'contracts/SupplyFetcher.sol:SupplyFetcher');
     await verify(FeeReceiver.address, [owner.address, owner.address, owner.address, HigherDatabase.address], 'contracts/FeeReceiver.sol:FeeReceiver');
     await verify(HigherDatabase.address, [], 'contracts/Database.sol:HigherDatabase');
     await verify(LiquidityAdder.address, [HigherDatabase.address, HigherRouter.address, HigherFactory.address, INIT_CODE_PAIR_HASH], 'contracts/LiquidityAdder.sol:LiquidityAdder');

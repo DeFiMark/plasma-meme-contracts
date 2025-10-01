@@ -15,7 +15,7 @@ import "./interfaces/IDatabase.sol";
 import "./lib/EnumerableSet.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
 
-contract SmallBondingCurveData {
+contract BondingCurveData {
     uint32 internal versionNo;
     address internal token;
     address internal liquidityAdder;
@@ -25,10 +25,10 @@ contract SmallBondingCurveData {
     uint256 public constant TOKEN_TOTAL = 1_000_000_000 * 10**18;
 
     // aScaled = 0.000000001 * 1e18
-    uint256 public constant A_SCALED = 0.0000005 ether;
+    uint256 public constant A_SCALED = 0.0000002 ether;
 
     // bScaled = 0.0000000034 * 1e18
-    uint256 public constant B_SCALED = 0.0000000005 ether;// 0.0000000034 ether;
+    uint256 public constant B_SCALED = 0.0000000008 ether;// 0.0000000034 ether;
 
     // total supply of tokens in the bonding curve
     uint256 public bondingSupply;
@@ -65,8 +65,7 @@ contract SmallBondingCurveData {
     event Sell(address indexed token, address indexed user, uint256 quantityETH, uint256 quantityTokens);
 }
 
-// NOTE: ADD FAIL SAFE IN CASE OF UNFORSEEN EVENT -- WORST CASE IS FUNDS ARE LOCKED!!!
-contract SmallBondingCurve is SmallBondingCurveData, IBondingCurve {
+contract SmallBondingCurve is BondingCurveData, IBondingCurve {
 
     using PRBMathUD60x18 for uint256;
 

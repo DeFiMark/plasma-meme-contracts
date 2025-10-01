@@ -60,7 +60,7 @@ async function main() {
     nonceOffset = 0;
     console.log('Account nonce: ', baseNonce);
 
-    const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x5ad45DCFC2049362eB62321265248e6D6053b5D9');
+    const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x04E137dfdA310805B2905F6dE6A12Aa185Eee457');
     await sleep(5_000);
 
     // Deploy Bonding Curve Master Copy (no constructor parameters)

@@ -17,7 +17,7 @@ contract LiquidityAdder is Ownable, ILiquidityAdder {
     address private immutable database;
 
     // Fee on bonding
-    uint256 public bondFee = 200; // 20%
+    uint256 public bondFee = 100; // 10%
 
     // token slippage
     uint256 public tokenSlippage = 50;

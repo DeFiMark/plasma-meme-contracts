@@ -65,7 +65,6 @@ contract BondingCurveData {
     event Sell(address indexed token, address indexed user, uint256 quantityETH, uint256 quantityTokens);
 }
 
-// NOTE: ADD FAIL SAFE IN CASE OF UNFORSEEN EVENT -- WORST CASE IS FUNDS ARE LOCKED!!!
 contract BondingCurve is BondingCurveData, IBondingCurve {
 
     using PRBMathUD60x18 for uint256;
