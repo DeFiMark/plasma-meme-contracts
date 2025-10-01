@@ -191,7 +191,7 @@ interface IHigherPair {
 
     function mint(address to) external returns (uint liquidity);
     function burn(address to) external returns (uint amount0, uint amount1);
-    function swap(uint amount0Out, uint amount1Out, address to) external;
+    function swap(uint amount0Out, uint amount1Out, address to, address user) external;
     function skim(address to) external;
     function sync() external;
 
@@ -561,7 +561,7 @@ contract HigherRouter is IHigherRouter {
 
     // **** SWAP ****
     // requires the initial amount to have already been sent to the first pair
-    function _swap(uint[] memory amounts, address[] memory path, address _to) internal virtual {
+    function _swap(uint[] memory amounts, address[] memory path, address _to, address user) internal virtual {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
             (address token0,) = HigherLibrary.sortTokens(input, output);
@@ -569,7 +569,7 @@ contract HigherRouter is IHigherRouter {
             (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOut) : (amountOut, uint(0));
             address to = i < path.length - 2 ? HigherLibrary.pairFor(factory, output, path[i + 2]) : _to;
             IHigherPair(HigherLibrary.pairFor(factory, input, output)).swap(
-                amount0Out, amount1Out, to
+                amount0Out, amount1Out, to, user
             );
         }
     }
@@ -590,7 +590,7 @@ contract HigherRouter is IHigherRouter {
         require(amounts[amounts.length - 1] >= amountOutMin, 'HigherRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETH).deposit{value: amounts[0]}();
         assert(IWETH(WETH).transfer(HigherLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
-        _swap(amounts, path, to);
+        _swap(amounts, path, to, to);
     }
     function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
         external
@@ -606,7 +606,7 @@ contract HigherRouter is IHigherRouter {
         TransferHelper.safeTransferFrom(
             path[0], msg.sender, HigherLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
-        _swap(amounts, path, address(this));
+        _swap(amounts, path, address(this), to);
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
         uint256 amountToSend = _takeFee(HigherLibrary.pairFor(factory, path[0], path[1]), address(this).balance);
         TransferHelper.safeTransferETH(to, amountToSend);
@@ -625,7 +625,7 @@ contract HigherRouter is IHigherRouter {
         TransferHelper.safeTransferFrom(
             path[0], msg.sender, HigherLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
-        _swap(amounts, path, address(this));
+        _swap(amounts, path, address(this), to);
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
         uint256 amountToSend = _takeFee(HigherLibrary.pairFor(factory, path[0], path[1]), address(this).balance);
         TransferHelper.safeTransferETH(to, amountToSend);
@@ -646,7 +646,7 @@ contract HigherRouter is IHigherRouter {
         _takeFee(HigherLibrary.pairFor(factory, path[0], path[1]), amounts[0]);
         IWETH(WETH).deposit{value: amounts[0]}();
         assert(IWETH(WETH).transfer(HigherLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
-        _swap(amounts, path, to);
+        _swap(amounts, path, to, to);
         // refund dust eth, if any
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
     }
@@ -665,7 +665,7 @@ contract HigherRouter is IHigherRouter {
         require(amounts[amounts.length - 1] >= amountOutMin, 'HigherRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETH).deposit{value: amounts[0]}();
         assert(IWETH(WETH).transfer(HigherLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
-        _swap(amounts, path, to);
+        _swap(amounts, path, to, to);
     }
 
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
@@ -682,7 +682,7 @@ contract HigherRouter is IHigherRouter {
         TransferHelper.safeTransferFrom(
             path[0], msg.sender, HigherLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
-        _swap(amounts, path, address(this));
+        _swap(amounts, path, address(this), to);
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
         uint256 amountToSend = _takeFee(HigherLibrary.pairFor(factory, path[0], path[1]), address(this).balance);
         TransferHelper.safeTransferETH(to, amountToSend);

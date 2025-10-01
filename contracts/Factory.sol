@@ -62,7 +62,7 @@ interface IHigherPair is IERC20 {
 
     function mint(address to) external returns (uint liquidity);
     function burn(address to) external returns (uint amount0, uint amount1);
-    function swap(uint amount0Out, uint amount1Out, address to) external;
+    function swap(uint amount0Out, uint amount1Out, address to, address user) external;
     function skim(address to) external;
     function sync() external;
 
@@ -312,7 +312,7 @@ contract HigherPair is IHigherPair {
     }
 
     // this low-level function should be called from a contract which performs important safety checks
-    function swap(uint amount0Out, uint amount1Out, address to) external override lock {
+    function swap(uint amount0Out, uint amount1Out, address to, address user) external override lock {
         require(IHigherFactory(factory).canCreatePair(msg.sender), 'DEX: FORBIDDEN');
         require(amount0Out > 0 || amount1Out > 0, 'DEX: INSUFFICIENT_OUTPUT_AMOUNT');
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
@@ -340,7 +340,17 @@ contract HigherPair is IHigherPair {
 
         _update(balance0, balance1, _reserve0, _reserve1);
         emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
-        IHigherFactory(factory).swapEvent(token0, token1, msg.sender, amount0In, amount1In, amount0Out, amount1Out);
+        {
+            address _user = user;
+            address _token0 = token0;
+            address _token1 = token1;
+            uint256 _amount0In = amount0In;
+            uint256 _amount1In = amount1In;
+            uint256 _amount0Out = amount0Out;
+            uint256 _amount1Out = amount1Out;
+            IHigherFactory(factory).swapEvent(_token0, _token1, _user, _amount0In, _amount1In, _amount0Out, _amount1Out);    
+        }
+        
     }
 
     // force balances to match reserves

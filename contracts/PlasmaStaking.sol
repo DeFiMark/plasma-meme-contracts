@@ -23,6 +23,7 @@ contract PlasmaStaking is Ownable, ReentrancyGuard {
     struct UserInfo {
         uint256 amount;
         uint256 unlockTime;
+        uint256 totalClaimed;
         uint256 totalExcluded;
     }
     // Address => UserInfo
@@ -183,6 +184,9 @@ contract PlasmaStaking is Ownable, ReentrancyGuard {
 
         // update total excluded
         userInfo[user].totalExcluded = getCumulativeDividends(userInfo[user].amount);
+        unchecked {
+            userInfo[user].totalClaimed += amount;
+        }
 
         // transfer reward to user
         TransferHelper.safeTransferETH(user, amount);
@@ -201,6 +205,10 @@ contract PlasmaStaking is Ownable, ReentrancyGuard {
 
     function timeUntilUnlock(address user) public view returns (uint256) {
         return userInfo[user].unlockTime < block.timestamp ? 0 : userInfo[user].unlockTime - block.timestamp;
+    }
+
+    function getTotalClaimed(address user) public view returns (uint256) {
+        return userInfo[user].totalClaimed;
     }
 
     function pendingRewards(address shareholder) public view returns (uint256) {
