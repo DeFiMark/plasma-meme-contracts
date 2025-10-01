@@ -60,7 +60,7 @@ async function main() {
     nonceOffset = 0;
     console.log('Account nonce: ', baseNonce);
 
-    const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x04E137dfdA310805B2905F6dE6A12Aa185Eee457');
+    const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x6C8ae1085616ea92f69B8A0997917a23b40A93cC');
     await sleep(5_000);
 
     const HigherVolumeTracker = await deployContract('HigherVolumeTracker', 'contracts/HigherVolumeTracker.sol:HigherVolumeTracker', [HigherDatabase.address]);

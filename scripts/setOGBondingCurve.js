@@ -60,10 +60,10 @@ async function main() {
     nonceOffset = 0;
     console.log('Account nonce: ', baseNonce);
 
-    const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x04E137dfdA310805B2905F6dE6A12Aa185Eee457');
+    const HigherDatabase = await fetchContract('contracts/Database.sol:HigherDatabase', '0x6C8ae1085616ea92f69B8A0997917a23b40A93cC');
     await sleep(5_000);
 
-    const OGBondingCurve = "0x2684aa05c0DB2A431aaf6F5C694b715C4183c577";
+    const OGBondingCurve = "0x2B9Ac7d06b236445f62Fd378996aA7267Db76C72";
 
     await HigherDatabase.setHigherPumpBondingCurveMasterCopy(OGBondingCurve, { nonce: getNonce() });
     await sleep(5000);
