@@ -60,12 +60,22 @@ async function main() {
     nonceOffset = 0;
     console.log('Account nonce: ', baseNonce);
 
-    const TokenAddress = "0xa3905d07ea79f7c0da56c712c4a1c5b267ad0237";
+    const TokenAddress = "0x759a736ec07eA1A4aF66852dBcCF9aD0E61570Dc";
 
-    const Staking = await deployContract('Staking', 'contracts/PlasmaStaking.sol:PlasmaStaking', [TokenAddress]);
+    // const Staking = await deployContract('Staking', 'contracts/PlasmaStaking.sol:PlasmaStaking', [TokenAddress]);
+    // await sleep(5_000);
+
+    const FeeReceiver = await fetchContract('contracts/FeeReceiver.sol:FeeReceiver', '0xe60A988e1D606303B628909029dF0D114999bA91');
     await sleep(5_000);
 
-    await verify(Staking.address, [TokenAddress], 'contracts/PlasmaStaking.sol:PlasmaStaking');
+    await FeeReceiver.setStakingRecipient("0xdB0552d5D4bC959b23a4476227147296Df8128de", { nonce: getNonce() });
+    await sleep(5_000);
+    console.log('Set Staking Recipient');
+
+    // const Staking = await fetchContract('contracts/PlasmaStaking.sol:PlasmaStaking', '0xdB0552d5D4bC959b23a4476227147296Df8128de');
+    // await sleep(5_000);
+
+    // await verify(Staking.address, [TokenAddress], 'contracts/PlasmaStaking.sol:PlasmaStaking');
 }
 
 main()
