@@ -28,7 +28,7 @@ contract BondingCurveData {
     uint256 public constant A_SCALED = 0.000004 ether;
 
     // bScaled = 0.0000000034 * 1e18
-    uint256 public constant B_SCALED = 0.0000000028 ether;// 0.0000000034 ether;
+    uint256 public constant B_SCALED = 0.00000000321 ether;// 0.0000000034 ether;
 
     // total supply of tokens in the bonding curve
     uint256 public bondingSupply;
