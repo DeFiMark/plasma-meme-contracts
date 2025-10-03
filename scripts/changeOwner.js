@@ -60,32 +60,32 @@ async function main() {
     nonceOffset = 0;
     console.log('Account nonce: ', baseNonce);
 
-    // const Factory = await fetchContract('contracts/Factory.sol:HigherFactory', '0xAa55cA0C522d575A7537587D805960b25fb95A32');
-    // await sleep(5_000);
+    const newOwner = "0x46016fd8BD1e32eF26bdfc6dDbBd9D854722430e";
 
-    // await Factory.setSwapFee(150, { nonce: getNonce() });
-    // await sleep(5_000);
-    // console.log('Set Swap Fee');
-
-    // const Locker = await deployContract('Locker', 'contracts/Locker.sol:Locker', []);
-    // await sleep(5_000);
-
-    // await verify(Locker.address, [], 'contracts/Locker.sol:Locker');
-
-    // const TokenInfoScraper = await deployContract('TokenInfoScraper', 'contracts/TokenInfoScraper.sol:TokenInfoScraper', []);
-    // await sleep(5_000);
-
-    // await verify(TokenInfoScraper.address, [], 'contracts/TokenInfoScraper.sol:TokenInfoScraper');
-
-    // const DEXInfoScraper = await deployContract('DEXInfoScraper', 'contracts/DEXInfoScraper.sol:DEXInfoScraper', []);
-    // await sleep(5_000);
-
-    // await verify(DEXInfoScraper.address, [], 'contracts/DEXInfoScraper.sol:DEXInfoScraper');
-
-    const Airdrop = await deployContract('Airdrop', 'contracts/Airdrop.sol:Airdrop', []);
+    const HigherVolumeTracker = await fetchContract('contracts/HigherVolumeTracker.sol:HigherVolumeTracker', '0xe2E47Bc79d6BaDCD014B26bD1C25250DA10f4D8E');
+    await sleep(1_000);
+    await HigherVolumeTracker.changeOwner(newOwner, { nonce: getNonce() });
     await sleep(5_000);
+    console.log('Set Owner HigherVolumeTracker');
 
-    await verify(Airdrop.address, [], 'contracts/Airdrop.sol:Airdrop');
+    const FeeReceiver = await fetchContract('contracts/FeeReceiver.sol:FeeReceiver', '0xe60A988e1D606303B628909029dF0D114999bA91');
+    await sleep(1_000);
+    await FeeReceiver.changeOwner(newOwner, { nonce: getNonce() });
+    await sleep(5_000);
+    console.log('Set Owner FeeReceiver');
+
+    const Database = await fetchContract('contracts/Database.sol:HigherDatabase', '0x6301d3534Fa0be6FA20E17869d52295A71b2f8C5');
+    await sleep(1_000);
+    await Database.changeOwner(newOwner, { nonce: getNonce() });
+    await sleep(5_000);
+    console.log('Set Owner Database');
+
+    const LiquidityAdder = await fetchContract('contracts/LiquidityAdder.sol:LiquidityAdder', '0x86049151210dED398E4A4e50a32A43e4C95D2445');
+    await sleep(1_000);
+    await LiquidityAdder.changeOwner(newOwner, { nonce: getNonce() });
+    await sleep(5_000);
+    console.log('Set Owner LiquidityAdder');
+
 }
 
 main()
